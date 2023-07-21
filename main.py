@@ -1,8 +1,6 @@
-from flask import Flask
-from views import views
+from __init__ import create_app
 
-app = Flask(__name__)
-app.register_blueprint(views, url_prefix="/")
+app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8080)
+    app.run(debug = True, port=8080)
