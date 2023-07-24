@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify
+from models import Room
+from __init__ import db
 
 views = Blueprint(__name__, "views")
 
@@ -31,9 +33,12 @@ def newroom():
     if roomcode not in allRoomCodes and len(roomcode) == 4:
         allRoomCodes.add(roomcode)
         print(allRoomCodes)
-        return jsonify({'code': 'granted'})
+        new_room = Room(code=roomcode, gameStage="round0")
+        db.session.add(new_room)
+        db.session.commit()
+        return jsonify({'access': 'granted'})
     else:
-        return jsonify({'code': 'denied'})
+        return jsonify({'access': 'denied'})
 
 
 @views.route("/json")

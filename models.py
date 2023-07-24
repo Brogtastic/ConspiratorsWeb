@@ -1,8 +1,9 @@
-from __init__ import db
 from flask_login import UserMixin
+from __init__ import db
 
 class Room(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.Integer)
     gameStage = db.Column(db.String(20))
     members = db.relationship('Member')
 

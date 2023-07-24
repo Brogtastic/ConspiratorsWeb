@@ -1,10 +1,11 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from views import views
-from os import path
 
 db = SQLAlchemy()
 DB_NAME = "database.db"
+
+from views import views
+from os import path
 
 def create_app():
     app = Flask(__name__)
@@ -12,8 +13,6 @@ def create_app():
     app.config['SECRET_KEY'] = 'aoufhbwiufgyavbigfa'
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
     db.init_app(app)
-
-    import models
 
     with app.app_context():
         if not path.exists('instance/' + DB_NAME):
