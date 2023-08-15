@@ -24,6 +24,18 @@ def profile():
     name = args.get('name', name)  # If 'name' is not in the query parameters, keep the current name
     return jsonify({'name': name})
 
+@views.route("/deleteroom")
+def deleteroom():
+    global allRoomCodes
+    args = request.args
+    deleteCode = args.get('roomcode', 'nothing')
+    if deleteCode in allRoomCodes:
+        allRoomCodes.remove(deleteCode)
+        return jsonify({'status': 'Code Deleted'})
+    else:
+        return jsonify({'status': 'Code Not Present'})
+
+
 @views.route("/newroom")
 def newroom():
     global allRoomCodes
