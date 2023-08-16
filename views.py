@@ -7,7 +7,7 @@ views = Blueprint(__name__, "views")
 roomCode = "0"
 number = "0"
 name = "no name"
-allRoomCodes = {"H469", "1234"}
+allRoomCodes = {"1234567"}
 secret_key = "agekvoslfhfgaye6382m4i201nui32h078hrauipbvluag78e4tg4w3liutbh2q89897wrgh4ui3gh2780gbrwauy"
 
 @views.route("/", methods=['GET', 'POST'])
@@ -16,16 +16,31 @@ def home():
     if(request.method=='POST'):
         enteredRoomCode = request.form.get('roomCode')
         playerName = request.form.get('name')
-        if(enteredRoomCode in allRoomCodes):
+
+        room = Room.query.filter_by(code=enteredRoomCode).first()
+        if(room):
+            names_list = []
+            for member in room.members:
+                names_list.append(member.name + " ")
+            number_of_members = len(names_list)
+
+
+        if (len(enteredRoomCode) != 4):
+            return render_template("index.html", number=number, roomCode="",error="Room Code should be 4 digits long. Please try again")
+        elif(enteredRoomCode not in allRoomCodes):
+            return render_template("index.html", number=number, roomCode="", error="Room Code does not exist. Please try again")
+        elif (number_of_members >= 8):
+            return render_template("index.html", number=number, roomCode="", error="Room is full!")
+        elif (playerName.strip() in [name.strip() for name in names_list]):
+            return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Name already in use. Please enter a different name.")
+        else:
             room = Room.query.filter_by(code=enteredRoomCode).first()
             new_member = Member(name=playerName, room_id=room.id, points=0)
             db.session.add(new_member)
             db.session.commit()
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
-        else:
-            return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Room Code does not exist. Please try again")
 
-    return render_template("index.html", number=number, error=" ")
+    return render_template("index.html", number=number, error=" ", roomCode="")
 
 @views.route("/profile")
 def profile():
@@ -39,9 +54,20 @@ def deleteroom():
     global allRoomCodes
     args = request.args
     deleteCode = args.get('roomcode', 'nothing')
-    if deleteCode in allRoomCodes:
-        allRoomCodes.remove(deleteCode)
-        return jsonify({'status': 'Code Deleted'})
+    room_to_delete = Room.query.filter_by(code=deleteCode).first()
+
+    if room_to_delete:
+        members_to_delete = Member.query.filter_by(room_id=room_to_delete.id).all()
+
+        for member in members_to_delete:
+            db.session.delete(member)
+
+        if deleteCode in allRoomCodes:
+            allRoomCodes.remove(deleteCode)
+        db.session.delete(room_to_delete)
+        db.session.commit()
+
+        return jsonify({'status': 'Code Deleted and Room Removed'})
     else:
         return jsonify({'status': 'Code Not Present'})
 
@@ -89,7 +115,7 @@ def play(roomCodeEnter):
     args = request.args
     this_key = args.get('secret_key', 'locked')
 
-    if (this_key == secret_key):
+    if (this_key == secret_key) and not roomCodeEnter.startswith("request failed"):
         room = Room.query.filter_by(code=roomCodeEnter).first()
 
         # Convert members to a JSON-serializable format
