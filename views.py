@@ -45,14 +45,25 @@ def home():
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
         elif current_user.room_id != enteredRoomCode:
             room = Room.query.filter_by(code=enteredRoomCode).first()
-            member_to_update = Member.query.get(current_user.id)
-            if member_to_update:
-                member_to_update.name = playerName
-                member_to_update.room_id = room.id
+            if(room.gameStage == "round0"):
+                #Allow room changes if still in starting room
+                member_to_update = Member.query.get(current_user.id)
+                if member_to_update:
+                    member_to_update.name = playerName
+                    member_to_update.room_id = room.id
+                    db.session.commit()
+                return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
+            else:
+                #Keep old inactive member in previous room, create a new member for new room
+                new_member = Member(name=playerName, room_id=room.id, points=0)
+                db.session.add(new_member)
                 db.session.commit()
-            return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
+                login_user(new_member, remember=False)
+                return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
         else:
-            if(current_user.name != playerName):
+            #Allow name changes if still in starting room.
+            room = Room.query.filter_by(code=enteredRoomCode).first()
+            if(current_user.name != playerName) and (room.gameStage == "round0"):
                 member_to_update = Member.query.get(current_user.id)
                 if member_to_update:
                     member_to_update.name = playerName
