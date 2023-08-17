@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask_login import LoginManager, login_user, current_user, login_required
 from models import Room, Member
 from __init__ import db
 
@@ -33,11 +34,29 @@ def home():
             return render_template("index.html", number=number, roomCode="", error="Room is full!")
         elif (playerName.strip() in [name.strip() for name in names_list]):
             return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Name already in use. Please enter a different name.")
-        else:
+        elif (len(playerName) == 0):
+            return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Please enter a name.")
+        elif not current_user.is_authenticated:
             room = Room.query.filter_by(code=enteredRoomCode).first()
             new_member = Member(name=playerName, room_id=room.id, points=0)
             db.session.add(new_member)
             db.session.commit()
+            login_user(new_member, remember=False)
+            return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
+        elif current_user.room_id != enteredRoomCode:
+            room = Room.query.filter_by(code=enteredRoomCode).first()
+            member_to_update = Member.query.get(current_user.id)
+            if member_to_update:
+                member_to_update.name = playerName
+                member_to_update.room_id = room.id
+                db.session.commit()
+            return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
+        else:
+            if(current_user.name != playerName):
+                member_to_update = Member.query.get(current_user.id)
+                if member_to_update:
+                    member_to_update.name = playerName
+                    db.session.commit()
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
 
     return render_template("index.html", number=number, error=" ", roomCode="")
@@ -67,6 +86,8 @@ def deleteroom():
         db.session.delete(room_to_delete)
         db.session.commit()
 
+        print(allRoomCodes)
+
         return jsonify({'status': 'Code Deleted and Room Removed'})
     else:
         return jsonify({'status': 'Code Not Present'})
@@ -89,35 +110,28 @@ def newroom():
         return jsonify({'access': 'denied'})
 
 
-'''
-@views.route("/json")
-def get_json():
-    global roomCode
-    global name
-    global secret_key
-
-    args = request.args
-    this_key = args.get('secret_key', 'locked')
-
-    if(request.form.get('roomCode') and (this_key == secret_key)):
-        roomCode = request.form.get('roomCode')
-        name = request.form.get('name')
-        print(name)
-    return jsonify({'name': name, 'roomCode': roomCode})
-'''
-
 @views.route("/play/<roomCodeEnter>")
+@login_required
 def play(roomCodeEnter):
     global name
     global secret_key
     global roomCode
 
+    room = Room.query.filter_by(code=roomCodeEnter).first()
+
+    if(not room):
+        return redirect(url_for('views.home'))
+
+    return render_template("play.html", roomCodeEnter=roomCodeEnter)
+
+@views.route("<key>/play/members-info/<roomCodeEnter>")
+def membersinfo(roomCodeEnter, key):
     args = request.args
     this_key = args.get('secret_key', 'locked')
 
-    if (this_key == secret_key) and not roomCodeEnter.startswith("request failed"):
-        room = Room.query.filter_by(code=roomCodeEnter).first()
+    room = Room.query.filter_by(code=roomCodeEnter).first()
 
+    if (this_key == secret_key) and not roomCodeEnter.startswith("request failed"):
         # Convert members to a JSON-serializable format
         members_list = []
         for member in room.members:
@@ -129,7 +143,6 @@ def play(roomCodeEnter):
             members_list.append(member_dict)
 
         return jsonify({'members': members_list, 'roomCode': room.code})
-
     return render_template("play.html", roomCodeEnter=roomCodeEnter)
 
 
