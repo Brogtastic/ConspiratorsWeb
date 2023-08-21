@@ -5,7 +5,6 @@ from __init__ import db
 
 views = Blueprint(__name__, "views")
 
-roomCode = "0"
 number = "0"
 name = "no name"
 allRoomCodes = {"1234567"}
@@ -32,7 +31,7 @@ def home():
             return render_template("index.html", number=number, roomCode="", error="Room Code does not exist. Please try again")
         elif (number_of_members >= 8):
             return render_template("index.html", number=number, roomCode="", error="Room is full!")
-        elif (playerName.strip() in [name.strip() for name in names_list]):
+        elif ((playerName.strip() in [name.strip() for name in names_list]) and (not current_user.is_authenticated)) or (current_user.is_authenticated and current_user.name != playerName and (playerName.strip() in [name.strip() for name in names_list])):
             return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Name already in use. Please enter a different name.")
         elif (len(playerName) == 0):
             return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Please enter a name.")
@@ -41,7 +40,7 @@ def home():
             new_member = Member(name=playerName, room_id=room.id, points=0)
             db.session.add(new_member)
             db.session.commit()
-            login_user(new_member, remember=False)
+            login_user(new_member, remember=True)
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
         elif current_user.room_id != enteredRoomCode:
             room = Room.query.filter_by(code=enteredRoomCode).first()
@@ -78,6 +77,15 @@ def profile():
     args = request.args
     number = args.get('number', number)  # If 'number' is not in the query parameters, keep the current number
     return jsonify({'number': number})
+
+@views.route("/number-of-members/<roomCode>")
+def numMembersReturn(roomCode):
+    room = Room.query.filter_by(code=roomCode).first()
+    if room:
+        numMembers = len(room.members)
+        return jsonify({'numMembers': numMembers})
+    else:
+        return jsonify({'numMembers': 0})
 
 @views.route("/deleteroom")
 def deleteroom():
@@ -126,14 +134,20 @@ def newroom():
 def play(roomCodeEnter):
     global name
     global secret_key
-    global roomCode
 
     room = Room.query.filter_by(code=roomCodeEnter).first()
+
+    numMembers = len(room.members)
 
     if(not room):
         return redirect(url_for('views.home'))
 
-    return render_template("play.html", roomCodeEnter=roomCodeEnter)
+    if (current_user == room.members[0]):
+        startingPlayer = True
+    else:
+        startingPlayer = False
+
+    return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers)
 
 @views.route("<key>/play/members-info/<roomCodeEnter>")
 def membersinfo(roomCodeEnter, key):

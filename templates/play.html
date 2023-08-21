@@ -2,13 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title> Lobby </title>
+    <meta http=-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Lobby</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://getbootstrap.com/docs/5.3/assets/css/docs.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+
 </head>
 <body>
 
 <h1 id="playRoomCode" name="playRoomCode">{{ roomCodeEnter }}</h1>
 <h1 id="playerName" name="playerName">{{ playerName }}</h1>
+{% if startingPlayer == True %}
+You are Starting Player
+<button id="StartGame">Start Game</button>
+{% endif %}
+<div id="numMembers">Number of players in room: {{ numMembers }}</div>
 <h3> Waiting... </h3>
+
+<script
+    type="text/javascript"
+    src="{{ url_for('static', filename='play.js') }}"
+></script>
 
 </body>
 </html>

@@ -1,6 +1,5 @@
 const currentPath = window.location.pathname;
 
-
 function checkNumberChange() {
     // Send a GET request to the server to check if the number has changed
     var xhr = new XMLHttpRequest();
