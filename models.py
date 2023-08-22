@@ -13,9 +13,11 @@ class Member(db.Model, UserMixin):
     name = db.Column(db.String(15))
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'))
     points = db.Column(db.Integer)
-    theories = db.relationship('Theory')
+    theory = db.Column(db.String(150))
+    waiting = db.Column(db.Boolean)
+    words = db.relationship('Words')
 
-class Theory(db.Model, UserMixin):
+class Words(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.String(200))
+    content = db.Column(db.String(15))
     member_id = db.Column(db.Integer, db.ForeignKey('member.id'))

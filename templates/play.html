@@ -42,14 +42,15 @@
 
 <div id="round1" name="round1" style="display: none;">
     <h1>Round 1</h1>
+    {% if member.waiting == False %}
     <h2>{{ room.question }}</h2>
     <form method="POST" id="theoryForm" class="col-md-4 mb-3">
         <input class="form-control" type="text" id="enterTheoryText" name="enterTheoryText" placeholder="What's your theory?" maxlength="100">
         <button type="submit" class="btn btn-primary" id="enterTheoryButton" name="enterTheoryButton" value="clicked">Enter Theory</button>
     </form>
-    {% for theory in member.theories %}
-    <h1>{{ theory.content }}</h1>
-    {% endfor %}
+    {% else %}
+    <h1> Waiting for other players to submit</h1>
+    {% endif %}
 </div>
 
 <div id="disconnected" name="disconnected" style="display: none;">

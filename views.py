@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, abort
 from flask_login import LoginManager, login_user, current_user, login_required
-from models import Room, Member, Theory
+from models import Room, Member, Words
 from __init__ import db
 import random
 
@@ -38,7 +38,7 @@ def home():
             return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Please enter a name.")
         elif not current_user.is_authenticated:
             room = Room.query.filter_by(code=enteredRoomCode).first()
-            new_member = Member(name=playerName, room_id=room.id, points=0)
+            new_member = Member(name=playerName, room_id=room.id, points=0, waiting=False)
             db.session.add(new_member)
             db.session.commit()
             login_user(new_member, remember=True)
@@ -55,7 +55,7 @@ def home():
                 return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
             else:
                 #Keep old inactive member in previous room, create a new member for new room
-                new_member = Member(name=playerName, room_id=room.id, points=0)
+                new_member = Member(name=playerName, room_id=room.id, points=0, waiting=False)
                 db.session.add(new_member)
                 db.session.commit()
                 login_user(new_member, remember=False)
@@ -131,7 +131,7 @@ def newroom():
     newroomcode = args.get('roomcode', 'nothing')
 
     questions = []
-    with open('static/questions.txt', 'r') as file:
+    with open('static/questions.txt', 'r', encoding='utf-8') as file:
         for line in file:
             questions.append(line.strip())
     rand = random.randint(0, len(questions)-1)
@@ -173,12 +173,11 @@ def play(roomCodeEnter):
             room.gameStage = "round1"
             db.session.commit()
             return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
-        if enterTheoryButton == 'clicked':
+        elif enterTheoryButton == 'clicked':
             theory = request.form.get('enterTheoryText')
-            new_theory = Theory(content = theory, member_id=current_user.id)
-            db.session.add(new_theory)
+            current_user.theory = theory
+            current_user.waiting = True
             db.session.commit()
-
 
     return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
 
