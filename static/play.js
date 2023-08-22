@@ -25,7 +25,6 @@ function checkNumMemberChange() {
         }
     };
     xhr.send();
-
 }
 
 if(gameStage === "round0"){
@@ -49,11 +48,18 @@ function checkRound() {
                 if(gameStage === "round0"){
                     document.getElementById("round0").style.display = "block";
                     document.getElementById("round1").style.display = "none";
+                    document.getElementById("disconnected").style.display = "none";
+                }
+                else if(gameStage === "round1"){
+                    document.getElementById("round0").style.display = "none";
+                    document.getElementById("round1").style.display = "block";
+                    document.getElementById("disconnected").style.display = "none";
                 }
                 else{
                     document.getElementById("round0").style.display = "none";
-                    document.getElementById("round1").style.display = "block";
-    }
+                    document.getElementById("round1").style.display = "none";
+                    document.getElementById("disconnected").style.display = "block";
+                }
             }
         }
     };

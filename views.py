@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, abort
 from flask_login import LoginManager, login_user, current_user, login_required
-from models import Room, Member
+from models import Room, Member, Theory
 from __init__ import db
+import random
 
 views = Blueprint(__name__, "views")
 
@@ -95,7 +96,7 @@ def gameStageReturn(roomCode):
     if room:
         return jsonify({'gameStage': room.gameStage})
     else:
-        return jsonify({'gameStage': "round0"})
+        return jsonify({'gameStage': "disconnected"})
 
 
 @views.route("/deleteroom")
@@ -129,10 +130,17 @@ def newroom():
     args = request.args
     newroomcode = args.get('roomcode', 'nothing')
 
+    questions = []
+    with open('static/questions.txt', 'r') as file:
+        for line in file:
+            questions.append(line.strip())
+    rand = random.randint(0, len(questions)-1)
+    room_question = questions[rand]
+
     if newroomcode not in allRoomCodes and len(newroomcode) == 4:
         allRoomCodes.add(newroomcode)
         print(allRoomCodes)
-        new_room = Room(code=newroomcode, gameStage="round0")
+        new_room = Room(code=newroomcode, gameStage="round0", question=room_question)
         db.session.add(new_room)
         db.session.commit()
         return jsonify({'access': 'granted'})
@@ -160,15 +168,19 @@ def play(roomCodeEnter):
 
     if(request.method=="POST"):
         startGame = request.form.get('startGame')
+        enterTheoryButton = request.form.get('enterTheoryButton')
         if startGame == 'clicked':
             room.gameStage = "round1"
             db.session.commit()
-            return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage="round1")
+            return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
+        if enterTheoryButton == 'clicked':
+            theory = request.form.get('enterTheoryText')
+            new_theory = Theory(content = theory, member_id=current_user.id)
+            db.session.add(new_theory)
+            db.session.commit()
 
-    if(room.gameStage == "round0"):
-        return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage)
-    elif(room.gameStage == "round1"):
-        return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage)
+
+    return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
 
 @views.route("<key>/play/members-info/<roomCodeEnter>")
 def membersinfo(roomCodeEnter, key):
@@ -177,7 +189,7 @@ def membersinfo(roomCodeEnter, key):
 
     room = Room.query.filter_by(code=roomCodeEnter).first()
 
-    if (this_key == secret_key) and not roomCodeEnter.startswith("request failed"):
+    if (this_key == secret_key) and (not roomCodeEnter.startswith("request failed")) and (room):
         # Converts members to a JSON-serializable format
         members_list = []
         for member in room.members:
