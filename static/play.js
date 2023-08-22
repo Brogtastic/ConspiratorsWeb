@@ -1,7 +1,7 @@
 const currentPath = window.location.pathname;
+var gameStage = "round0";
 
 function checkNumMemberChange() {
-    // Send a GET request to the server to check if the number has changed
     var roomCodeElement = document.getElementById('playRoomCode');
     var roomCode = roomCodeElement.textContent;
 
@@ -19,7 +19,7 @@ function checkNumMemberChange() {
                 }
                 else{
                     document.getElementById("StartGame").style.display = "none";
-    }
+                }
             }
         }
     };
@@ -27,5 +27,36 @@ function checkNumMemberChange() {
 
 }
 
-// Check for number changes every 500 milliseconds
-setInterval(checkNumMemberChange, 500);
+if(gameStage === "round0"){
+    // Check for number changes every 500 milliseconds
+    setInterval(checkNumMemberChange, 500);
+}
+
+function checkRound() {
+    var roomCodeElement = document.getElementById('playRoomCode');
+    var roomCode = roomCodeElement.textContent;
+
+    var xhr = new XMLHttpRequest();
+    var url = '/game-stage/' + roomCode;
+
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                var gameStage = response.gameStage;
+                if(gameStage === "round0"){
+                    document.getElementById("round0").style.display = "block";
+                    document.getElementById("round1").style.display = "none";
+                }
+                else{
+                    document.getElementById("round0").style.display = "none";
+                    document.getElementById("round1").style.display = "block";
+    }
+            }
+        }
+    };
+    xhr.send();
+}
+
+setInterval(checkRound, 1000);

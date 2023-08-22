@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, abort
 from flask_login import LoginManager, login_user, current_user, login_required
 from models import Room, Member
 from __init__ import db
@@ -71,12 +71,14 @@ def home():
 
     return render_template("index.html", number=number, error=" ", roomCode="")
 
+
 @views.route("/profile")
 def profile():
     global number
     args = request.args
     number = args.get('number', number)  # If 'number' is not in the query parameters, keep the current number
     return jsonify({'number': number})
+
 
 @views.route("/number-of-members/<roomCode>")
 def numMembersReturn(roomCode):
@@ -86,6 +88,15 @@ def numMembersReturn(roomCode):
         return jsonify({'numMembers': numMembers})
     else:
         return jsonify({'numMembers': 0})
+
+@views.route("/game-stage/<roomCode>")
+def gameStageReturn(roomCode):
+    room = Room.query.filter_by(code=roomCode).first()
+    if room:
+        return jsonify({'gameStage': room.gameStage})
+    else:
+        return jsonify({'gameStage': "round0"})
+
 
 @views.route("/deleteroom")
 def deleteroom():
@@ -129,7 +140,7 @@ def newroom():
         return jsonify({'access': 'denied'})
 
 
-@views.route("/play/<roomCodeEnter>")
+@views.route("/play/<roomCodeEnter>", methods=['GET', 'POST'])
 @login_required
 def play(roomCodeEnter):
     global name
@@ -147,7 +158,16 @@ def play(roomCodeEnter):
     else:
         startingPlayer = False
 
-    return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers)
+    if(request.method=="POST"):
+        startGame = request.form.get('startGame')
+        if startGame == 'clicked':
+            room.gameStage = "round1"
+            db.session.commit()
+
+    if(room.gameStage == "round0"):
+        return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage)
+    elif(room.gameStage == "round1"):
+        return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage)
 
 @views.route("<key>/play/members-info/<roomCodeEnter>")
 def membersinfo(roomCodeEnter, key):
@@ -157,7 +177,7 @@ def membersinfo(roomCodeEnter, key):
     room = Room.query.filter_by(code=roomCodeEnter).first()
 
     if (this_key == secret_key) and not roomCodeEnter.startswith("request failed"):
-        # Convert members to a JSON-serializable format
+        # Converts members to a JSON-serializable format
         members_list = []
         for member in room.members:
             member_dict = {
@@ -167,7 +187,6 @@ def membersinfo(roomCodeEnter, key):
             }
             members_list.append(member_dict)
 
-        return jsonify({'members': members_list, 'roomCode': room.code})
-    return render_template("play.html", roomCodeEnter=roomCodeEnter)
-
+        return jsonify({'members': members_list, 'roomCode': room.code, 'gameStage':room.gameStage})
+    abort(404)
 

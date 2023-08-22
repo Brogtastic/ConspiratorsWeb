@@ -9,10 +9,7 @@ function checkNumberChange() {
             if (xhr.status === 200) {
                 var response = JSON.parse(xhr.responseText);
                 var newNumber = response.number;
-                if (newNumber !== "{{ number }}") {
-                    // Update the page with the new number
-                    document.getElementById('number').innerText = newNumber;
-                }
+                document.getElementById('number').innerText = newNumber;
             }
         }
     };

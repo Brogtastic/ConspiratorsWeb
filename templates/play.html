@@ -28,12 +28,21 @@
 
 <h1 id="playRoomCode" name="playRoomCode">{{ roomCodeEnter }}</h1>
 <h1 id="playerName" name="playerName">{{ playerName }}</h1>
-{% if startingPlayer == True %}
-You are Starting Player
-<button id="StartGame">Start Game</button>
-{% endif %}
-<div id="numMembers">Number of players in room: {{ numMembers }}</div>
-<h3> Waiting... </h3>
+
+<div id="round0" name="round0">
+    {% if startingPlayer == True %}
+    You are Starting Player
+    <form method="POST" id="startGameForm" class="col-md-4 mb-3">
+        <button type="submit" class="btn btn-primary" id="StartGame" name="startGame" value="clicked" style="display: none;">Start Game</button>
+    </form>
+    {% endif %}
+    <div id="numMembers">Number of players in room: {{ numMembers }}</div>
+    <h3> Waiting... </h3>
+</div>
+
+<div id="round1" name="round1" style="display: none;">
+    <h1>Round 1</h1>
+</div>
 
 <script
     type="text/javascript"
