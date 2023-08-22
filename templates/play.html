@@ -29,6 +29,7 @@
 <h1 id="playRoomCode" name="playRoomCode">{{ roomCodeEnter }}</h1>
 <h1 id="playerName" name="playerName">{{ playerName }}</h1>
 
+{% if gameStage == "round0" %}
 <div id="round0" name="round0">
     {% if startingPlayer == True %}
     You are Starting Player
@@ -39,6 +40,7 @@
     <div id="numMembers">Number of players in room: {{ numMembers }}</div>
     <h3> Waiting... </h3>
 </div>
+{% endif %}
 
 <div id="round1" name="round1" style="display: none;">
     <h1>Round 1</h1>

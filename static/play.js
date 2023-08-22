@@ -1,6 +1,7 @@
 const currentPath = window.location.pathname;
 var gameStage = "round0";
 
+
 function checkNumMemberChange() {
     var roomCodeElement = document.getElementById('playRoomCode');
     var roomCode = roomCodeElement.textContent;
@@ -59,4 +60,4 @@ function checkRound() {
     xhr.send();
 }
 
-setInterval(checkRound, 1000);
+setInterval(checkRound, 150);

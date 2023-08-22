@@ -163,6 +163,7 @@ def play(roomCodeEnter):
         if startGame == 'clicked':
             room.gameStage = "round1"
             db.session.commit()
+            return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage="round1")
 
     if(room.gameStage == "round0"):
         return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage)
