@@ -26,6 +26,7 @@
 </head>
 <body>
 
+<small id="gameStage" name="gameStage" style="display: none;">{{ room.gameStage }}</small>
 <h1 id="playRoomCode" name="playRoomCode">{{ roomCodeEnter }}</h1>
 <h1 id="playerName" name="playerName">{{ playerName }}</h1>
 
@@ -51,6 +52,12 @@
     {% else %}
     <h1> Waiting for other players to submit</h1>
     {% endif %}
+</div>
+
+<div id="round2" name="round2" style="display: none;">
+    <h1>Round 2</h1>
+    <h2> YOUR THEORY: </h2>
+    <h4 id="memberTheory">{{ member.theory }}</h4>
 </div>
 
 <div id="disconnected" name="disconnected" style="display: none;">

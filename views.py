@@ -98,6 +98,61 @@ def gameStageReturn(roomCode):
     else:
         return jsonify({'gameStage': "disconnected"})
 
+@views.route("/member-theory-return/<roomCode>/<memberName>")
+def memberTheoryReturn(roomCode, memberName):
+    room = Room.query.filter_by(code=roomCode).first()
+    member = next((m for m in room.members if m.name == memberName), None)
+    if room and member:
+        return jsonify({'memberTheory': member.theory})
+    else:
+        return jsonify({'memberTheory': "N/A"})
+
+@views.route("/set-user-theory", methods=['GET', 'POST'])
+def setUserTheory():
+    args = request.args
+    firstName = args.get('firstName', 'nothing')
+    theory = args.get('theory', 'nothing')
+    roomCode = args.get('roomCode', 'nothing')
+
+    print("Set User Theory Called")
+    print("FirstName = " + firstName)
+    print("theory = " + theory)
+    print("roomCode = " + roomCode)
+
+    room = Room.query.filter_by(code=roomCode).first()
+    if room:
+        member = next((m for m in room.members if m.name == firstName), None)
+        print("Member first name: " + member.name)
+        if member:
+            member.theory = theory
+            print("Member theory: " + member.theory)
+            db.session.commit()
+            return jsonify({'status': "success"})
+
+    return jsonify({'status': "failed"})
+
+@views.route("/set-round")
+def setRound():
+    args = request.args
+    roundSet = args.get('roundSet', 'nothing')
+    roomCode = args.get('roomCode', 'nothing')
+    key = args.get('key', 'nothing')
+
+    print("roundSet = " + roundSet)
+    print("roomCode = " + roomCode)
+    print("key = " + key)
+
+    room = Room.query.filter_by(code=roomCode).first()
+
+    if (room) and (key == secret_key):
+        room.gameStage = roundSet
+        #TO-DO: ALL MEMBERS WAITING EQUALS FALSE
+        db.session.commit()
+        print("New round status: " + room.gameStage)
+        return jsonify({'status': "success"})
+
+    return jsonify({'status': "failed"})
+
 
 @views.route("/deleteroom")
 def deleteroom():
@@ -171,6 +226,7 @@ def play(roomCodeEnter):
         enterTheoryButton = request.form.get('enterTheoryButton')
         if startGame == 'clicked':
             room.gameStage = "round1"
+            current_user.waiting = False
             db.session.commit()
             return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
         elif enterTheoryButton == 'clicked':
@@ -199,6 +255,6 @@ def membersinfo(roomCodeEnter, key):
             }
             members_list.append(member_dict)
 
-        return jsonify({'members': members_list, 'roomCode': room.code, 'gameStage':room.gameStage})
+        return jsonify({'members': members_list, 'roomCode': room.code, 'gameStage':room.gameStage, 'roomQuestion':room.question})
     abort(404)
 

@@ -6,7 +6,7 @@ class Room(db.Model):
     code = db.Column(db.Integer)
     gameStage = db.Column(db.String(20))
     question = db.Column(db.String(150))
-    members = db.relationship('Member')
+    members = db.relationship('Member', backref='room')
 
 class Member(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
