@@ -102,6 +102,8 @@ def gameStageReturn(roomCode):
 def memberTheoryReturn(roomCode, memberName):
     room = Room.query.filter_by(code=roomCode).first()
     member = next((m for m in room.members if m.name == memberName), None)
+    print("Member name = " + member.name)
+    print("Member theory = " + member.theory)
     if room and member:
         return jsonify({'memberTheory': member.theory})
     else:
@@ -114,18 +116,11 @@ def setUserTheory():
     theory = args.get('theory', 'nothing')
     roomCode = args.get('roomCode', 'nothing')
 
-    print("Set User Theory Called")
-    print("FirstName = " + firstName)
-    print("theory = " + theory)
-    print("roomCode = " + roomCode)
-
     room = Room.query.filter_by(code=roomCode).first()
     if room:
         member = next((m for m in room.members if m.name == firstName), None)
-        print("Member first name: " + member.name)
-        if member:
+        if (member) and (member.waiting == False):
             member.theory = theory
-            print("Member theory: " + member.theory)
             db.session.commit()
             return jsonify({'status': "success"})
 
@@ -232,6 +227,7 @@ def play(roomCodeEnter):
         elif enterTheoryButton == 'clicked':
             theory = request.form.get('enterTheoryText')
             current_user.theory = theory
+            db.session.commit()
             current_user.waiting = True
             db.session.commit()
 

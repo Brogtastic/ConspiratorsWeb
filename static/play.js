@@ -75,7 +75,8 @@ function checkRound() {
     var roomCode = roomCodeElement.textContent;
     var firstname = document.getElementById('playerName').textContent;
     if(gameStage === "round1"){
-        var theory = document.getElementById('enterTheoryText').value;
+        var enterTheoryTextElement = document.getElementById('enterTheoryText');
+        var theory = enterTheoryTextElement ? enterTheoryTextElement.value : "";
     }
     else{
         var theory = "null";
@@ -92,7 +93,6 @@ function checkRound() {
 
                 if((response.gameStage === "round2") && (gameStage === "round1")){
                     //Set current_user's theory to value of input field
-                    console.log("Condition Met");
                     var this_url = '/set-user-theory?firstName=' + firstname + '&theory=' + theory + '&roomCode=' + roomCode;
                     var postData = 'firstName=' + encodeURIComponent(firstname) +
                    '&theory=' + encodeURIComponent(theory) +
