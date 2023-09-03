@@ -32,14 +32,26 @@ def home():
             return render_template("index.html", number=number, roomCode="", error="Room Code does not exist. Please try again")
         elif (number_of_members >= 8):
             return render_template("index.html", number=number, roomCode="", error="Room is full!")
-        elif ((playerName.strip() in [name.strip() for name in names_list]) and (not current_user.is_authenticated)) or (current_user.is_authenticated and current_user.name != playerName and (playerName.strip() in [name.strip() for name in names_list])):
+        elif ((str.lower(playerName.strip()) in [str.lower(name.strip()) for name in names_list]) and (not current_user.is_authenticated)) or (current_user.is_authenticated and current_user.name != playerName and (str.lower(playerName.strip()) in [str.lower(name.strip()) for name in names_list])):
             return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Name already in use. Please enter a different name.")
         elif (len(playerName) == 0):
             return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Please enter a name.")
         elif not current_user.is_authenticated:
+            #TYPICAL MEMBER CREATION
             room = Room.query.filter_by(code=enteredRoomCode).first()
             new_member = Member(name=playerName, room_id=room.id, points=0, waiting=False)
             db.session.add(new_member)
+
+            #TEST_CODE_START This is to fill the room for test without having to log in 3 separate times
+            possible_test = str.lower(new_member.name[:-1])
+            if(possible_test == 'test') and (len(new_member.name) == 5):
+                memsToCreate = int(new_member.name[4])
+                for i in range(memsToCreate-1):
+                    fake_member = Member(name='player' + str(i+2), room_id=room.id, points=0, waiting=False, theory='player' + str(i+2) + ' theory')
+                    db.session.add(fake_member)
+                new_member.name = 'player1'
+            #TEST_CODE_END
+
             db.session.commit()
             login_user(new_member, remember=True)
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
@@ -61,7 +73,7 @@ def home():
                 login_user(new_member, remember=False)
                 return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
         else:
-            #Allow name changes if still in starting room.
+            # Allow name changes if still in starting room
             room = Room.query.filter_by(code=enteredRoomCode).first()
             if(current_user.name != playerName) and (room.gameStage == "round0"):
                 member_to_update = Member.query.get(current_user.id)
@@ -141,7 +153,9 @@ def setRound():
 
     if (room) and (key == secret_key):
         room.gameStage = roundSet
-        #TO-DO: ALL MEMBERS WAITING EQUALS FALSE
+        #All members waiting equals false
+        for member in room.members:
+            member.waiting = False
         db.session.commit()
         print("New round status: " + room.gameStage)
         return jsonify({'status': "success"})
@@ -169,6 +183,10 @@ def deleteroom():
 
         print(allRoomCodes)
 
+        # Add code back to txt file of possible room codes for new rooms
+        with open('static/available-room-codes.txt', 'a') as file:
+            file.write("\n" + deleteCode)
+
         return jsonify({'status': 'Code Deleted and Room Removed'})
     else:
         return jsonify({'status': 'Code Not Present'})
@@ -178,7 +196,19 @@ def deleteroom():
 def newroom():
     global allRoomCodes
     args = request.args
-    newroomcode = args.get('roomcode', 'nothing')
+    key = args.get('secret_key', 'nothing')
+    if (key != secret_key): return jsonify({'access': 'denied'})
+
+    # Get room code from possible available combinations
+    with open('static/available-room-codes.txt', 'r') as file:
+        lines = file.readlines()
+    if lines:
+        random_index = random.randint(0, len(lines) - 1)
+        newroomcode = lines.pop(random_index).strip()
+        with open('static/available-room-codes.txt', 'w') as file:
+            file.writelines(lines)
+    else:
+        return jsonify({'access': 'denied'})
 
     questions = []
     with open('static/questions.txt', 'r', encoding='utf-8') as file:
@@ -193,7 +223,7 @@ def newroom():
         new_room = Room(code=newroomcode, gameStage="round0", question=room_question)
         db.session.add(new_room)
         db.session.commit()
-        return jsonify({'access': 'granted'})
+        return jsonify({'access': 'granted', 'newRoomCode':newroomcode})
     else:
         return jsonify({'access': 'denied'})
 
@@ -227,9 +257,27 @@ def play(roomCodeEnter):
         elif enterTheoryButton == 'clicked':
             theory = request.form.get('enterTheoryText')
             current_user.theory = theory
-            db.session.commit()
             current_user.waiting = True
             db.session.commit()
+
+            #TEST_CODE_START if it's a test just mark all members as done
+            if current_user.name == "player1":
+                for member in room.members:
+                    member.waiting = True
+            #TEST_CODE_END
+
+            #Check to see if everyone is waiting
+            allwaiting = True
+            for member in room.members:
+                if not member.waiting:
+                    allwaiting = False
+            #Start a new round if everyone is waiting (a.k.a. they've answered)
+            if allwaiting:
+                for member in room.members:
+                    member.waiting = False
+                room.gameStage = "round2"
+                db.session.commit()
+
 
     return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
 
