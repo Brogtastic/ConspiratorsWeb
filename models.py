@@ -21,3 +21,8 @@ class Words(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.String(15))
     member_id = db.Column(db.Integer, db.ForeignKey('member.id'))
+
+class AvailableRoom(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(4))
+    in_use = db.Column(db.Boolean)

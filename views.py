@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, abort
 from flask_login import LoginManager, login_user, current_user, login_required
-from models import Room, Member, Words
+from models import Room, Member, Words, AvailableRoom
 from __init__ import db
 import random
 
@@ -92,7 +92,6 @@ def profile():
     number = args.get('number', number)  # If 'number' is not in the query parameters, keep the current number
     return jsonify({'number': number})
 
-
 @views.route("/number-of-members/<roomCode>")
 def numMembersReturn(roomCode):
     room = Room.query.filter_by(code=roomCode).first()
@@ -169,6 +168,7 @@ def deleteroom():
     args = request.args
     deleteCode = args.get('roomcode', 'nothing')
     room_to_delete = Room.query.filter_by(code=deleteCode).first()
+    room_code_to_free = AvailableRoom.query.filter_by(code=deleteCode).first()
 
     if room_to_delete:
         members_to_delete = Member.query.filter_by(room_id=room_to_delete.id).all()
@@ -179,13 +179,10 @@ def deleteroom():
         if deleteCode in allRoomCodes:
             allRoomCodes.remove(deleteCode)
         db.session.delete(room_to_delete)
+        room_code_to_free.in_use = True
         db.session.commit()
 
         print(allRoomCodes)
-
-        # Add code back to txt file of possible room codes for new rooms
-        with open('static/available-room-codes.txt', 'a') as file:
-            file.write("\n" + deleteCode)
 
         return jsonify({'status': 'Code Deleted and Room Removed'})
     else:
@@ -199,31 +196,29 @@ def newroom():
     key = args.get('secret_key', 'nothing')
     if (key != secret_key): return jsonify({'access': 'denied'})
 
-    # Get room code from possible available combinations
-    with open('static/available-room-codes.txt', 'r') as file:
-        lines = file.readlines()
-    if lines:
-        random_index = random.randint(0, len(lines) - 1)
-        newroomcode = lines.pop(random_index).strip()
-        with open('static/available-room-codes.txt', 'w') as file:
-            file.writelines(lines)
-    else:
-        return jsonify({'access': 'denied'})
+    total_rooms = AvailableRoom.query.filter_by(in_use=False).count()
+    if(total_rooms > 0):
+        random_index = random.randint(0, total_rooms - 1)
+        random_room = AvailableRoom.query.offset(random_index).first()
+        newroomcode = random_room.code
 
-    questions = []
-    with open('static/questions.txt', 'r', encoding='utf-8') as file:
-        for line in file:
-            questions.append(line.strip())
-    rand = random.randint(0, len(questions)-1)
-    room_question = questions[rand]
+        random_room.in_use = True
+        db.session.commit()
 
-    if newroomcode not in allRoomCodes and len(newroomcode) == 4:
+        questions = []
+        with open('static/questions.txt', 'r', encoding='utf-8') as file:
+            for line in file:
+                questions.append(line.strip())
+        rand = random.randint(0, len(questions) - 1)
+        room_question = questions[rand]
+
         allRoomCodes.add(newroomcode)
         print(allRoomCodes)
         new_room = Room(code=newroomcode, gameStage="round0", question=room_question)
         db.session.add(new_room)
         db.session.commit()
-        return jsonify({'access': 'granted', 'newRoomCode':newroomcode})
+        return jsonify({'access': 'granted', 'newRoomCode': newroomcode})
+
     else:
         return jsonify({'access': 'denied'})
 
