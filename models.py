@@ -14,6 +14,7 @@ class Member(db.Model, UserMixin):
     room_id = db.Column(db.Integer, db.ForeignKey('room.id'))
     points = db.Column(db.Integer)
     theory = db.Column(db.String(150))
+    received_theory = db.Column(db.String(150))
     waiting = db.Column(db.Boolean)
     words = db.relationship('Words')
 

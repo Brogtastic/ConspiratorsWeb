@@ -50,6 +50,7 @@ function SetUserTheory(url, postData){
     xhr.send(postData);
 }
 
+
 function getUserTheory() {
     var roomCode = document.getElementById('playRoomCode').textContent;
     var firstname = document.getElementById('playerName').textContent;
@@ -63,7 +64,9 @@ function getUserTheory() {
             if (xhr.status === 200) {
                 var response = JSON.parse(xhr.responseText);
                 memberTheory = response.memberTheory;
+                receivedTheory = response.receivedTheory;
                 document.getElementById('memberTheory').innerText = memberTheory;
+                document.getElementById('receivedTheory').innerText = receivedTheory;
             }
         }
     };
@@ -91,8 +94,9 @@ function checkRound() {
             if (xhr.status === 200) {
                 var response = JSON.parse(xhr.responseText);
 
+                // When round 2 begins
+                // Set current_user's theory to value of input field
                 if((response.gameStage === "round2") && (gameStage === "round1")){
-                    //Set current_user's theory to value of input field
                     var this_url = '/set-user-theory?firstName=' + firstname + '&theory=' + theory + '&roomCode=' + roomCode;
                     var postData = 'firstName=' + encodeURIComponent(firstname) +
                    '&theory=' + encodeURIComponent(theory) +

@@ -11,6 +11,40 @@ name = "no name"
 allRoomCodes = {"1234567"}
 secret_key = "agekvoslfhfgaye6382m4i201nui32h078hrauipbvluag78e4tg4w3liutbh2q89897wrgh4ui3gh2780gbrwauy"
 
+def ShuffleTheories(roomCode):
+    room = Room.query.filter_by(code=roomCode).first()
+    null_test_member = Member.query.filter_by(room_id=room.id).first()
+
+    # If a member in the room has a received theory then we have
+    # already shuffled, and we don't want to do it again.
+    if (null_test_member.received_theory is not None):
+        return
+
+    # Shuffle makes it so nobody gets their own theory
+    def perfect_shuffle(lst):
+        while True:
+            shuffled_lst = lst.copy()
+            random.shuffle(shuffled_lst)
+            if not any(a == b for a, b in zip(lst, shuffled_lst)):
+                return shuffled_lst
+
+    # Create list of theories
+    theoryList = []
+    for member in room.members:
+        theoryList.append(member.theory)
+    # Shuffle theories so everyone gets assigned a new one
+    shuffledTheoryList = perfect_shuffle(theoryList)
+    # Assign the shuffled theories
+    i = 0
+    for member in room.members:
+        member.received_theory = shuffledTheoryList[i]
+        i += 1
+    db.session.commit()
+    print("Shuffled Theory List:")
+    print(shuffledTheoryList)
+
+    return
+
 @views.route("/", methods=['GET', 'POST'])
 def home():
     global allRoomCodes
@@ -113,10 +147,12 @@ def gameStageReturn(roomCode):
 def memberTheoryReturn(roomCode, memberName):
     room = Room.query.filter_by(code=roomCode).first()
     member = next((m for m in room.members if m.name == memberName), None)
-    print("Member name = " + member.name)
-    print("Member theory = " + member.theory)
+
+    if(member.received_theory):
+        print("member received theory = " + member.received_theory)
+
     if room and member:
-        return jsonify({'memberTheory': member.theory})
+        return jsonify({'memberTheory': member.theory, 'receivedTheory': member.received_theory})
     else:
         return jsonify({'memberTheory': "N/A"})
 
@@ -128,14 +164,20 @@ def setUserTheory():
     roomCode = args.get('roomCode', 'nothing')
 
     room = Room.query.filter_by(code=roomCode).first()
+
+    #TO-DO: If a user's theory is blank, provide them a 'safety quip' one.
+
     if room:
+        # Auto-submits whatever unfinished theory a user has.
         member = next((m for m in room.members if m.name == firstName), None)
         if (member) and (member.waiting == False):
             member.theory = theory
             db.session.commit()
-            return jsonify({'status': "success"})
+        ShuffleTheories(roomCode)
+        return jsonify({'status': "success"})
 
     return jsonify({'status': "failed"})
+
 
 @views.route("/set-round")
 def setRound():
@@ -271,6 +313,7 @@ def play(roomCodeEnter):
                 for member in room.members:
                     member.waiting = False
                 room.gameStage = "round2"
+                ShuffleTheories(roomCodeEnter)
                 db.session.commit()
 
 
