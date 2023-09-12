@@ -63,9 +63,12 @@ function getUserTheory() {
         if (xhr.readyState === XMLHttpRequest.DONE) {
             if (xhr.status === 200) {
                 var response = JSON.parse(xhr.responseText);
-                var memberTheory = response.memberTheory;
+                //var memberTheory = response.memberTheory;
                 var receivedTheory = response.receivedTheory;
-                document.getElementById('memberTheory').innerText = memberTheory;
+                //document.getElementById('memberTheory').innerText = memberTheory;
+                if(receivedTheory === "None"){
+                    receivedTheory = "...";
+                }
                 document.getElementById('receivedTheory').innerText = receivedTheory;
                 console.log("Get User Theory Successful. Your Theory: " + memberTheory);
             }
@@ -74,9 +77,9 @@ function getUserTheory() {
     xhr.send();
 }
 
-if(gameStage === "round2"){
-    setInterval(getUserTheory, 3000);
-}
+//if(gameStage === "round2"){
+//    setInterval(getUserTheory, 3000);
+//}
 
 function checkRound() {
     var roomCodeElement = document.getElementById('playRoomCode');

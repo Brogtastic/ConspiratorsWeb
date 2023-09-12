@@ -6,7 +6,6 @@ import random
 
 views = Blueprint(__name__, "views")
 
-number = "0"
 name = "no name"
 allRoomCodes = {"1234567"}
 secret_key = "agekvoslfhfgaye6382m4i201nui32h078hrauipbvluag78e4tg4w3liutbh2q89897wrgh4ui3gh2780gbrwauy"
@@ -73,15 +72,15 @@ def home():
 
 
         if (len(enteredRoomCode) != 4):
-            return render_template("index.html", number=number, roomCode="",error="Room Code should be 4 digits long. Please try again")
+            return render_template("index.html", roomCode="",error="Room Code should be 4 digits long. Please try again")
         elif(enteredRoomCode not in allRoomCodes):
-            return render_template("index.html", number=number, roomCode="", error="Room Code does not exist. Please try again")
+            return render_template("index.html", roomCode="", error="Room Code does not exist. Please try again")
         elif (number_of_members >= 8):
-            return render_template("index.html", number=number, roomCode="", error="Room is full!")
+            return render_template("index.html", roomCode="", error="Room is full!")
         elif ((str.lower(playerName.strip()) in [str.lower(name.strip()) for name in names_list]) and (not current_user.is_authenticated)) or (current_user.is_authenticated and current_user.name != playerName and (str.lower(playerName.strip()) in [str.lower(name.strip()) for name in names_list])):
-            return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Name already in use. Please enter a different name.")
+            return render_template("index.html", roomCode=enteredRoomCode, error="Name already in use. Please enter a different name.")
         elif (len(playerName) == 0):
-            return render_template("index.html", number=number, roomCode=enteredRoomCode, error="Please enter a name.")
+            return render_template("index.html", roomCode=enteredRoomCode, error="Please enter a name.")
         elif not current_user.is_authenticated:
             #TYPICAL MEMBER CREATION
             room = Room.query.filter_by(code=enteredRoomCode).first()
@@ -128,15 +127,7 @@ def home():
                     db.session.commit()
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
 
-    return render_template("index.html", number=number, error=" ", roomCode="")
-
-
-@views.route("/profile")
-def profile():
-    global number
-    args = request.args
-    number = args.get('number', number)  # If 'number' is not in the query parameters, keep the current number
-    return jsonify({'number': number})
+    return render_template("index.html", error=" ", roomCode="")
 
 @views.route("/number-of-members/<roomCode>")
 def numMembersReturn(roomCode):

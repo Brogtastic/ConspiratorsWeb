@@ -17,6 +17,7 @@ class Member(db.Model, UserMixin):
     received_theory = db.Column(db.String(150))
     waiting = db.Column(db.Boolean)
     words = db.relationship('Words')
+    words_num = db.Column(db.Integer)
 
 class Words(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
