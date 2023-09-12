@@ -31,13 +31,12 @@
         <p id = "number">{{ number }}</p>
         <form method="POST">
             <h3>Room Code</h3>
-            <input class="form-control" type="text" id="roomCode" name="roomCode" placeholder="Room Code" maxlength="4" for="uppercase-input" value="{{roomCode}}">
+            <input class="form-control" type="text" id="roomCode" name="roomCode" placeholder="Room Code" maxlength="4" for="uppercase-input" autocomplete="off" value="{{roomCode}}">
             <div style="display: flex">
                 <h3>Name</h3>
                 <p id="nameCounter" style="padding-left: 1vw; align: bottom;">12</p>
             </div>
-            <input class="form-control" type="text" id="name" name="name" placeholder="Your Name" maxlength="12">
-            <!-- <a href="{{ url_for('views.play', roomCodeEnter=roomCode) }}">Link</a> -->
+            <input class="form-control" type="text" id="name" name="name" placeholder="Your Name" maxlength="12" autocomplete="off">
             <button type="submit" class="btn btn-primary">Join Room</button>
         </form>
         {{ error }}

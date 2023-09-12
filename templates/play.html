@@ -46,7 +46,7 @@
     {% if member.waiting == False %}
     <h2>{{ room.question }}</h2>
     <form method="POST" id="theoryForm" class="col-md-4 mb-3">
-        <input class="form-control" type="text" id="enterTheoryText" name="enterTheoryText" placeholder="What's your theory?" maxlength="100">
+        <input class="form-control" type="text" id="enterTheoryText" name="enterTheoryText" placeholder="What's your theory?" maxlength="120" autocomplete="off">
         <button type="submit" class="btn btn-primary" id="enterTheoryButton" name="enterTheoryButton" value="clicked">Enter Theory</button>
     </form>
     {% else %}
@@ -64,7 +64,7 @@
 
 <div id="disconnected" name="disconnected" style="display: none;">
     <h1>Room disconnected</h1>
-    <h3>Refresh to return to homepage</h3>
+    <h3 href="/">Refresh to return to homepage</h3>
 </div>
 
 <script
