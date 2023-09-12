@@ -56,8 +56,33 @@
 
 <div id="round2" name="round2" style="display: none;">
     <h1>Round 2</h1>
-    <h2> received theory: </h2>
+    <h2 id="round2Prompt"> Write some words that {{member.writing_to}} has to work into their theory! </h2>
+    <h2 id="round2PlayerTheory"> {{member.writing_to}}'s theory: </h2>
     <h4 id="receivedTheory">{{ member.received_theory }}</h4>
+    {% if member.waiting == False %}
+    <form method="POST" id="wordForm" class="col-md-4 mb-3">
+        <input class="form-control" type="text" id="enterWordText" name="enterWordText" placeholder="Write a word they have to work in" maxlength="15" autocomplete="off">
+        <button type="submit" class="btn btn-primary" id="enterWordButton" name="enterWordButton" value="clicked">Enter Word</button>
+    </form>
+    {% else %}
+    <h1> Waiting for other players to submit</h1>
+    {% endif %}
+    <h3>{{ member.words_num }} / 3</h3>
+</div>
+
+<div id="round3" name="round3" style="display: none;">
+    <h1>Round 3</h1>
+
+    {% if member.waiting == False %}
+    <h4>Welcome to Round 3, LOSER!</h4>
+    <h4>Here are your words.</h4>
+    {% for word in words_list %}
+    <div>{{ word.content }}</div>
+    {% endfor %}
+    {% else %}
+    <h1> Waiting for other players to submit</h1>
+    {% endif %}
+
 </div>
 
 <div id="disconnected" name="disconnected" style="display: none;">

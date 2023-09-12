@@ -18,6 +18,7 @@ class Member(db.Model, UserMixin):
     waiting = db.Column(db.Boolean)
     words = db.relationship('Words')
     words_num = db.Column(db.Integer)
+    writing_to = db.Column(db.String(15))
 
 class Words(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)

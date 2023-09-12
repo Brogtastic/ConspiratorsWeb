@@ -47,8 +47,14 @@ def ShuffleTheories(roomCode):
     # Assign the shuffled theories
     i = 0
     for member in room.members:
+        # Assign the theory that the player will write words to
         member.received_theory = shuffledTheoryList[i]
+
+        # Find the name of the player to display their name and for assigning points later
+        written_member = Member.query.filter_by(theory=shuffledTheoryList[i]).first()
+        member.writing_to = written_member.name
         db.session.commit()
+        print(member.name + " is writing to " + member.writing_to)
         i += 1
 
     print("Shuffled Theory List:")
@@ -84,7 +90,7 @@ def home():
         elif not current_user.is_authenticated:
             #TYPICAL MEMBER CREATION
             room = Room.query.filter_by(code=enteredRoomCode).first()
-            new_member = Member(name=playerName, room_id=room.id, points=0, waiting=False)
+            new_member = Member(name=playerName, room_id=room.id, points=0, waiting=False, words_num = 0)
             db.session.add(new_member)
 
             #TEST_CODE_START This is to fill the room for test without having to log in 3 separate times
@@ -92,7 +98,7 @@ def home():
             if(possible_test == 'test') and (len(new_member.name) == 5):
                 memsToCreate = int(new_member.name[4])
                 for i in range(memsToCreate-1):
-                    fake_member = Member(name='player' + str(i+2), room_id=room.id, points=0, waiting=False, theory='player' + str(i+2) + ' theory')
+                    fake_member = Member(name='player' + str(i+2), room_id=room.id, points=0, waiting=False, theory='player' + str(i+2) + ' theory', words_num = 0)
                     db.session.add(fake_member)
                 new_member.name = 'player1'
             #TEST_CODE_END
@@ -112,7 +118,7 @@ def home():
                 return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
             else:
                 #Keep old inactive member in previous room, create a new member for new room
-                new_member = Member(name=playerName, room_id=room.id, points=0, waiting=False)
+                new_member = Member(name=playerName, room_id=room.id, points=0, waiting=False, words_num = 0)
                 db.session.add(new_member)
                 db.session.commit()
                 login_user(new_member, remember=False)
@@ -163,13 +169,13 @@ def memberTheoryReturn(roomCode, memberName):
     if room:
         member = next((m for m in room.members if m.name == memberName), None)
     else:
-        return jsonify({'memberTheory': 'no room exists', 'receivedTheory': 'no room exists'})
+        return jsonify({'receivedName': 'no room exists', 'receivedTheory': 'no room exists'})
 
     if member:
         print("Member " + member.name + "'s theory: " + member.theory)
-        return jsonify({'memberTheory': current_user.theory, 'receivedTheory': member.received_theory})
+        return jsonify({'receivedName': member.writing_to, 'receivedTheory': member.received_theory})
     else:
-        return jsonify({'memberTheory': 'no member exists', 'receivedTheory': 'no member exists'})
+        return jsonify({'receivedName': 'no member exists', 'receivedTheory': 'no member exists'})
 
 @views.route("/set-user-theory", methods=['GET', 'POST'])
 def setUserTheory():
@@ -186,11 +192,36 @@ def setUserTheory():
         # Auto-submits whatever unfinished theory a user has.
         member = next((m for m in room.members if m.name == firstName), None)
         if (member) and (member.waiting == False):
-            #theory = NoRepeatTheories(theory, room)
+            theory = NoRepeatTheories(theory, room)
             if theory:
                 member.theory = theory
             db.session.commit()
             print("Autocomplete theory")
+        return jsonify({'status': "success"})
+
+    return jsonify({'status': "failed"})
+
+@views.route("/set-user-word", methods=['GET', 'POST'])
+def setUserWord():
+    args = request.args
+    firstName = args.get('firstName', 'nothing')
+    word = args.get('word', 'nothing')
+    roomCode = args.get('roomCode', 'nothing')
+
+    room = Room.query.filter_by(code=roomCode).first()
+
+    #TO-DO: If a user's theory is blank, provide them a 'safety quip' one.
+
+    if room:
+        # Auto-submits whatever unfinished theory a user has.
+        member = next((m for m in room.members if m.name == firstName), None)
+        if (member) and (member.waiting == False):
+            if word:
+                new_word = Words(content=word, member_id=member.id)
+                db.session.add(new_word)
+                member.words_num += 1
+            db.session.commit()
+            print("Autocomplete word")
         return jsonify({'status': "success"})
 
     return jsonify({'status': "failed"})
@@ -291,6 +322,7 @@ def play(roomCodeEnter):
     room = Room.query.filter_by(code=roomCodeEnter).first()
 
     numMembers = len(room.members)
+    words_list = []
 
     if(not room):
         return redirect(url_for('views.home'))
@@ -303,6 +335,7 @@ def play(roomCodeEnter):
     if(request.method=="POST"):
         startGame = request.form.get('startGame')
         enterTheoryButton = request.form.get('enterTheoryButton')
+        enterWordButton = request.form.get('enterWordButton')
         if startGame == 'clicked':
             room.gameStage = "round1"
             current_user.waiting = False
@@ -310,7 +343,7 @@ def play(roomCodeEnter):
             return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
         elif enterTheoryButton == 'clicked':
             theory = request.form.get('enterTheoryText')
-            #theory = NoRepeatTheories(theory, room)
+            theory = NoRepeatTheories(theory, room)
             if theory:
                 current_user.theory = theory
             db.session.commit()
@@ -334,9 +367,37 @@ def play(roomCodeEnter):
                     member.waiting = False
                 room.gameStage = "round2"
                 db.session.commit()
+        elif enterWordButton == 'clicked':
+            word = request.form.get('enterWordText')
+            new_word = Words(content=word, member_id=current_user.id)
+            db.session.add(new_word)
+            current_user.words_num += 1
 
+            # TEST_CODE_START if it's a test just mark all members as done
+            if (current_user.name == "player1") and (current_user.words_num == 3):
+                for member in room.members:
+                    member.waiting = True
+                db.session.commit()
+            # TEST_CODE_END
 
-    return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
+            if(current_user.words_num == 3):
+                current_user.waiting = True
+            db.session.commit()
+
+            # Check to see if everyone is waiting
+            allwaiting = True
+            for member in room.members:
+                if not member.waiting:
+                    allwaiting = False
+            # Start a new round if everyone is waiting (a.k.a. they've answered)
+            if allwaiting:
+                for member in room.members:
+                    member.waiting = False
+                room.gameStage = "round3"
+                db.session.commit()
+            words_list = list(current_user.words)
+
+    return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user, words_list=words_list)
 
 @views.route("<key>/play/members-info/<roomCodeEnter>")
 def membersinfo(roomCodeEnter, key):
