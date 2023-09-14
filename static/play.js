@@ -114,7 +114,7 @@ function checkRound() {
     }
     if(gameStage === "round2"){
         var enterWordTextElement = document.getElementById('enterWordText');
-        var word = enterTheoryTextElement ? enterTheoryTextElement.value : "";
+        var word = enterWordTextElement ? enterWordTextElement.value : "";
     }
     else{
         var word = "";
@@ -138,17 +138,19 @@ function checkRound() {
                    '&roomCode=' + encodeURIComponent(roomCode);
 
                     SetUserTheory(this_url, postData);
+                    console.log("Game Stage is: " + response.gameStage);
                 }
 
                 // When round 3 begins
                 // Add whatever unfinished word there is to the user's list
-                if((response.gameStage === "round3") && (gameStage === "round2") && (word.length > 0)){
+                if((response.gameStage === "round3") && (gameStage === "round2")){
                     var this_url = '/set-user-word?firstName=' + firstname + '&word=' + word + '&roomCode=' + roomCode;
                     var postData = 'firstName=' + encodeURIComponent(firstname) +
                    '&word=' + encodeURIComponent(word) +
                    '&roomCode=' + encodeURIComponent(roomCode);
 
-                    SetUserTheory(this_url, postData);
+                    SetUserWord(this_url, postData);
+                    console.log("Game Stage is: " + response.gameStage);
                 }
 
                 gameStage = response.gameStage;

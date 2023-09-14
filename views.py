@@ -5,6 +5,7 @@ from __init__ import db
 import random
 import json
 import threading
+import asyncio
 
 sse_thread_flag = threading.Event()
 
@@ -88,6 +89,7 @@ def event_stream(enteredRoomCode):
             data = {'data': data_to_send[0][1]}
             data_to_send.pop(0)
             yield json.dumps(data) + "\n\n"
+        asyncio.sleep(1)
 
 
 
@@ -269,12 +271,17 @@ def setUserTheory():
 
 @views.route("/set-user-word", methods=['GET', 'POST'])
 def setUserWord():
+    print("Set User Word called")
     args = request.args
     firstName = args.get('firstName', 'nothing')
     word = args.get('word', 'nothing')
+    print("Unfinished word is: " + word)
     roomCode = args.get('roomCode', 'nothing')
 
     room = Room.query.filter_by(code=roomCode).first()
+
+    if len(word) < 1:
+        return jsonify({'status': "failed"})
 
     #TO-DO: If a user's theory is blank, provide them a 'safety quip' one.
 
@@ -282,11 +289,12 @@ def setUserWord():
         # Auto-submits whatever unfinished theory a user has.
         member = next((m for m in room.members if m.name == firstName), None)
         if (member) and (member.waiting == False):
-            if word:
+            if (word) and (member.words_num < 3):
                 new_word = Words(content=word, member_id=member.id)
                 db.session.add(new_word)
                 member.words_num += 1
-            db.session.commit()
+                db.session.commit()
+                print("unfinished word added")
             print("Autocomplete word")
         return jsonify({'status': "success"})
 
@@ -443,11 +451,12 @@ def play(roomCodeEnter):
                 room.gameStage = "round2"
                 db.session.commit()
                 data_to_send.append([room.code, "UpdateGameStage"])
-        elif enterWordButton == 'clicked':
+        elif (enterWordButton == 'clicked') and (current_user.words_num < 3):
             word = request.form.get('enterWordText')
             new_word = Words(content=word, member_id=current_user.id)
             db.session.add(new_word)
             current_user.words_num += 1
+            db.session.commit()
 
             # TEST_CODE_START if it's a test just mark all members as done
             if (current_user.name == "player1") and (current_user.words_num == 3):
