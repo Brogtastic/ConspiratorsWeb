@@ -73,35 +73,22 @@ def ShuffleTheories(roomCode):
 @views.route('/sse/<enteredRoomCode>')
 def sse(enteredRoomCode):
     room = Room.query.filter_by(code=enteredRoomCode).first()
-    if not room:
-        return Response(json.dumps({
-                    'gameStage': "nothin",
-                    'members': []
-                }) + "\n\n", content_type='text/event-stream')
+    if (not room) or (enteredRoomCode not in openThreads):
+        print("data withold")
+        return Response(json.dumps({'data': "withold"}) + "\n\n", content_type='text/event-stream')
 
-    # Get list of members to return
-    members_list = []
-    for member in room.members:
-        member_dict = {
-            'id': member.id,
-            'name': member.name,
-            'points': member.points
-        }
-        members_list.append(member_dict)
+    return Response(event_stream(enteredRoomCode), content_type='text/event-stream')
 
-    # Pass 'room' as a variable to the event_stream function
-    return Response(event_stream(room, members_list, enteredRoomCode), content_type='text/event-stream')
+def event_stream(enteredRoomCode):
+    global openThreads
+    global data_to_send
+    while enteredRoomCode in openThreads:
+        if len(data_to_send) > 0 and data_to_send[0][0] == enteredRoomCode:
+            print("data send")
+            data = {'data': data_to_send[0][1]}
+            data_to_send.pop(0)
+            yield json.dumps(data) + "\n\n"
 
-def event_stream(room, members_list, roomCode):
-    while roomCode in openThreads:
-        if(len(data_to_send)>0):
-            if(data_to_send[0] == roomCode):
-                del data_to_send[0]
-                data = {
-                    'gameStage': room.gameStage,
-                    'members': members_list
-                }
-                yield json.dumps(data) + "\n\n"
 
 
 @views.route("/", methods=['GET', 'POST'])
@@ -118,6 +105,8 @@ def home():
             for member in room.members:
                 names_list.append(member.name + " ")
             number_of_members = len(names_list)
+            data_to_send.append([room.code, "ValidRoom"])
+            print("data_to_send: " + str(data_to_send))
 
 
         if (len(enteredRoomCode) != 4):
@@ -148,6 +137,10 @@ def home():
 
             db.session.commit()
             login_user(new_member, remember=True)
+
+            data_to_send.append([room.code, "UpdateMembers"])
+            print("data_to_send: " + str(data_to_send))
+
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
         elif current_user.room_id != enteredRoomCode:
             room = Room.query.filter_by(code=enteredRoomCode).first()
@@ -158,6 +151,7 @@ def home():
                     member_to_update.name = playerName
                     member_to_update.room_id = room.id
                     db.session.commit()
+                data_to_send.append([room.code, "UpdateMembers"])
                 return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
             else:
                 #Keep old inactive member in previous room, create a new member for new room
@@ -174,10 +168,8 @@ def home():
                 if member_to_update:
                     member_to_update.name = playerName
                     db.session.commit()
+            data_to_send.append([room.code, "UpdateMembers"])
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
-        if room:
-            room.data_to_send = True
-            db.session.commit()
 
     return render_template("index.html", error=" ", roomCode="")
 
@@ -190,26 +182,6 @@ def numMembersReturn(roomCode):
     else:
         return jsonify({'numMembers': 0})
 
-@views.route("/terminate-room-thread/<roomCode>")
-def terminateRoomThread(roomCode):
-    args = request.args
-    key = args.get('key', 'nothing')
-    room = Room.query.filter_by(code=roomCode).first()
-    global endMyLife
-    global thread
-    if not room:
-        print("Room does not exist: " + roomCode)
-    if (key != secret_key):
-        print("Key does not equal secret key")
-    if (room):
-        thread = False
-        room.thread = False
-        endMyLife = True
-        db.session.commit()
-        print("Room " + room.code + " thread is " + str(room.thread))
-        return jsonify({'access':'granted'})
-    else:
-        return jsonify({'access':'denied'})
 
 @views.route("/game-stage/<roomCode>")
 def gameStageReturn(roomCode):
@@ -219,9 +191,24 @@ def gameStageReturn(roomCode):
     else:
         return jsonify({'gameStage': "disconnected"})
 
+
+@views.route("/game-stage-return/<roomCode>")
+def getGameStage(roomCode):
+    room = Room.query.filter_by(code=roomCode).first()
+    args = request.args
+    key = args.get('secret_key', 'nothing')
+
+    if (not room) or (key != secret_key):
+        return jsonify({'access': 'denied', 'gameStage': 'none'})
+
+    return jsonify({'access': 'granted', 'gameStage': room.gameStage})
+
 @views.route("/member-theory-return/<roomCode>/<memberName>")
 def memberTheoryReturn(roomCode, memberName):
     room = Room.query.filter_by(code=roomCode).first()
+
+    if not room:
+        return jsonify({'receivedName': 'no room exists', 'receivedTheory': 'no room exists'})
 
     commenceShuffle = True
     for this_member in room.members:
@@ -233,16 +220,28 @@ def memberTheoryReturn(roomCode, memberName):
         ShuffleTheories(roomCode)
         db.session.commit()
 
-    if room:
-        member = next((m for m in room.members if m.name == memberName), None)
-    else:
-        return jsonify({'receivedName': 'no room exists', 'receivedTheory': 'no room exists'})
+    member = next((m for m in room.members if m.name == memberName), None)
 
-    if member:
+    if (member) and (member.name) and (member.theory):
         print("Member " + member.name + "'s theory: " + member.theory)
         return jsonify({'receivedName': member.writing_to, 'receivedTheory': member.received_theory})
     else:
         return jsonify({'receivedName': 'no member exists', 'receivedTheory': 'no member exists'})
+
+@views.route("/members-names-return/<roomCode>")
+def membersNamesReturn(roomCode):
+    room = Room.query.filter_by(code=roomCode).first()
+    args = request.args
+    key = args.get('secret_key', 'nothing')
+
+    if (not room) or (key != secret_key):
+        return jsonify({'access': 'denied', 'allNames':'none'})
+
+    allNames = []
+    for member in room.members:
+        allNames.append(member.name)
+
+    return jsonify({'access': 'granted', 'allNames': allNames})
 
 @views.route("/set-user-theory", methods=['GET', 'POST'])
 def setUserTheory():
@@ -381,7 +380,7 @@ def newroom():
         db.session.add(new_room)
         db.session.commit()
         openThreads.append(newroomcode)
-        data_to_send.append(newroomcode)
+        data_to_send.append([newroomcode, "New Room"])
         print("Open threads: " + str(openThreads))
         return jsonify({'access': 'granted', 'newRoomCode': newroomcode, 'roomQuestion': room_question})
     else:
@@ -415,6 +414,7 @@ def play(roomCodeEnter):
             room.gameStage = "round1"
             current_user.waiting = False
             db.session.commit()
+            data_to_send.append([room.code, "UpdateGameStage"])
             return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
         elif enterTheoryButton == 'clicked':
             theory = request.form.get('enterTheoryText')
@@ -442,6 +442,7 @@ def play(roomCodeEnter):
                     member.waiting = False
                 room.gameStage = "round2"
                 db.session.commit()
+                data_to_send.append([room.code, "UpdateGameStage"])
         elif enterWordButton == 'clicked':
             word = request.form.get('enterWordText')
             new_word = Words(content=word, member_id=current_user.id)
@@ -470,6 +471,7 @@ def play(roomCodeEnter):
                     member.waiting = False
                 room.gameStage = "round3"
                 db.session.commit()
+                data_to_send.append([room.code, "UpdateGameStage"])
             words_list = list(current_user.words)
 
     return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user, words_list=words_list)
