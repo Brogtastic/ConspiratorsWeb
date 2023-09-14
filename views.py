@@ -1,14 +1,21 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, abort
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, abort, Response, current_app
 from flask_login import LoginManager, login_user, current_user, login_required
 from models import Room, Member, Words, AvailableRoom
 from __init__ import db
 import random
+import json
+import threading
+
+sse_thread_flag = threading.Event()
 
 views = Blueprint(__name__, "views")
 
 name = "no name"
 allRoomCodes = {"1234567"}
 secret_key = "agekvoslfhfgaye6382m4i201nui32h078hrauipbvluag78e4tg4w3liutbh2q89897wrgh4ui3gh2780gbrwauy"
+openThreads = []
+data_to_send = []
+endMyLife = False
 
 def NoRepeatTheories(theory, room):
     for member in room.members:
@@ -62,10 +69,46 @@ def ShuffleTheories(roomCode):
 
     return
 
+
+@views.route('/sse/<enteredRoomCode>')
+def sse(enteredRoomCode):
+    room = Room.query.filter_by(code=enteredRoomCode).first()
+    if not room:
+        return Response(json.dumps({
+                    'gameStage': "nothin",
+                    'members': []
+                }) + "\n\n", content_type='text/event-stream')
+
+    # Get list of members to return
+    members_list = []
+    for member in room.members:
+        member_dict = {
+            'id': member.id,
+            'name': member.name,
+            'points': member.points
+        }
+        members_list.append(member_dict)
+
+    # Pass 'room' as a variable to the event_stream function
+    return Response(event_stream(room, members_list, enteredRoomCode), content_type='text/event-stream')
+
+def event_stream(room, members_list, roomCode):
+    while roomCode in openThreads:
+        if(len(data_to_send)>0):
+            if(data_to_send[0] == roomCode):
+                del data_to_send[0]
+                data = {
+                    'gameStage': room.gameStage,
+                    'members': members_list
+                }
+                yield json.dumps(data) + "\n\n"
+
+
 @views.route("/", methods=['GET', 'POST'])
 def home():
     global allRoomCodes
     if(request.method=='POST'):
+
         enteredRoomCode = request.form.get('roomCode')
         playerName = request.form.get('name')
 
@@ -132,6 +175,9 @@ def home():
                     member_to_update.name = playerName
                     db.session.commit()
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
+        if room:
+            room.data_to_send = True
+            db.session.commit()
 
     return render_template("index.html", error=" ", roomCode="")
 
@@ -143,6 +189,27 @@ def numMembersReturn(roomCode):
         return jsonify({'numMembers': numMembers})
     else:
         return jsonify({'numMembers': 0})
+
+@views.route("/terminate-room-thread/<roomCode>")
+def terminateRoomThread(roomCode):
+    args = request.args
+    key = args.get('key', 'nothing')
+    room = Room.query.filter_by(code=roomCode).first()
+    global endMyLife
+    global thread
+    if not room:
+        print("Room does not exist: " + roomCode)
+    if (key != secret_key):
+        print("Key does not equal secret key")
+    if (room):
+        thread = False
+        room.thread = False
+        endMyLife = True
+        db.session.commit()
+        print("Room " + room.code + " thread is " + str(room.thread))
+        return jsonify({'access':'granted'})
+    else:
+        return jsonify({'access':'denied'})
 
 @views.route("/game-stage/<roomCode>")
 def gameStageReturn(roomCode):
@@ -255,6 +322,7 @@ def setRound():
 @views.route("/deleteroom")
 def deleteroom():
     global allRoomCodes
+    global openThreads
     args = request.args
     deleteCode = args.get('roomcode', 'nothing')
     room_to_delete = Room.query.filter_by(code=deleteCode).first()
@@ -274,14 +342,19 @@ def deleteroom():
 
         print(allRoomCodes)
 
+        openThreads.pop(0)
+        print("Open threads after deletion: " + str(openThreads))
+
         return jsonify({'status': 'Code Deleted and Room Removed'})
     else:
         return jsonify({'status': 'Code Not Present'})
 
 
-@views.route("/newroom")
+@views.route("/createroom")
 def newroom():
     global allRoomCodes
+    global data_to_send
+    global openThreads
     args = request.args
     key = args.get('secret_key', 'nothing')
     if (key != secret_key): return jsonify({'access': 'denied'})
@@ -304,11 +377,13 @@ def newroom():
 
         allRoomCodes.add(newroomcode)
         print(allRoomCodes)
-        new_room = Room(code=newroomcode, gameStage="round0", question=room_question)
+        new_room = Room(code=newroomcode, gameStage="round0", question=room_question, thread=True, data_to_send=True)
         db.session.add(new_room)
         db.session.commit()
-        return jsonify({'access': 'granted', 'newRoomCode': newroomcode})
-
+        openThreads.append(newroomcode)
+        data_to_send.append(newroomcode)
+        print("Open threads: " + str(openThreads))
+        return jsonify({'access': 'granted', 'newRoomCode': newroomcode, 'roomQuestion': room_question})
     else:
         return jsonify({'access': 'denied'})
 
@@ -398,25 +473,4 @@ def play(roomCodeEnter):
             words_list = list(current_user.words)
 
     return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user, words_list=words_list)
-
-@views.route("<key>/play/members-info/<roomCodeEnter>")
-def membersinfo(roomCodeEnter, key):
-    args = request.args
-    this_key = args.get('secret_key', 'locked')
-
-    room = Room.query.filter_by(code=roomCodeEnter).first()
-
-    if (this_key == secret_key) and (not roomCodeEnter.startswith("request failed")) and (room):
-        # Converts members to a JSON-serializable format
-        members_list = []
-        for member in room.members:
-            member_dict = {
-                'id': member.id,
-                'name': member.name,
-                'points': member.points
-            }
-            members_list.append(member_dict)
-
-        return jsonify({'members': members_list, 'roomCode': room.code, 'gameStage':room.gameStage, 'roomQuestion':room.question})
-    abort(404)
 
