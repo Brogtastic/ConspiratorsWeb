@@ -111,11 +111,10 @@ def event_stream_javascript(enteredRoomCode):
         if len(data_to_send_js) > 0 and data_to_send_js[0][0] == enteredRoomCode:
             print("data send js")
             print("Data JS SSE: " + data_to_send_js[0][1])
-            data = {'data': data_to_send_js[0][1]}
+            data = {'info': data_to_send_js[0][1]}
             data_to_send_js.pop(0)
-            yield json.dumps(data) + "\n\n"
+            yield f"id: 1\ndata: {json.dumps(data)}\nevent: online\n\n"
         time.sleep(1)
-        data_to_send_js.append([enteredRoomCode, "Data Send JS"])
 
 
 @views.route("/", methods=['GET', 'POST'])
@@ -448,13 +447,15 @@ def play(roomCodeEnter):
         startingPlayer = False
 
     if(request.method=="POST"):
-        startGame = request.form.get('startGame')
+        startGame = request.form.get('StartGame')
         enterTheoryButton = request.form.get('enterTheoryButton')
         enterWordButton = request.form.get('enterWordButton')
         if startGame == 'clicked':
             room.gameStage = "round1"
+            db.session.commit()
             current_user.waiting = False
             db.session.commit()
+            print("round1")
             data_to_send.append([room.code, "UpdateGameStage"])
             data_to_send_js.append([room.code, "checkRound"])
             return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
@@ -518,6 +519,7 @@ def play(roomCodeEnter):
                 db.session.commit()
                 data_to_send.append([room.code, "UpdateGameStage"])
                 data_to_send_js.append([room.code, "checkRound"])
+                data_to_send_js.append([room.code, "getUserWords"])
             words_list = list(current_user.words)
 
     return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user, words_list=words_list)

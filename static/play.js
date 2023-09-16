@@ -5,7 +5,7 @@ var roomCodeElement = document.getElementById('playRoomCode');
 var roomCode = roomCodeElement.textContent;
 
 function checkNumMemberChange() {
-
+    console.log("Sending from CheckNumMemberChange (Called successfully)");
     var xhr = new XMLHttpRequest();
 
     xhr.open('GET', '/number-of-members/' + roomCode, true);
@@ -16,7 +16,11 @@ function checkNumMemberChange() {
                 var numMembers = response.numMembers; // Corrected
                 document.getElementById('numMembers').innerText = "Number of players in room: " + numMembers;
 
+                console.log("Number of members in room: " + numMembers);
+                console.log("Current round is " + gameStage);
+
                 if (Number(numMembers) > 2) {
+                    console.log("Start game display block");
                     document.getElementById("StartGame").style.display = "block";
                 } else {
                     document.getElementById("StartGame").style.display = "none";
@@ -190,24 +194,22 @@ function checkRound() {
     xhr.send();
 }
 
-//checkRound();
-//setInterval(checkRound, 150);
-
-
-//const sseDataElement = document.getElementById('ssedata');
+checkRound();
 
 // Create an EventSource instance to connect to your SSE server
 const eventSource = new EventSource('/ssejavascript/' + roomCode);
 console.log("Event source: /ssejavascript/" + roomCode);
 
-/*
 // Define an event listener for handling incoming SSE messages
-eventSource.addEventListener('message', (event) => {
-    console.log("SSE event listener");
-    const responeEventData = JSON.parse(event.data);
-    const eventData = responeEventData.data;
+eventSource.addEventListener('message', function(e) {
+    console.log(e.data);
+}, false);
 
-    console.log("Received SSE: " + eventData);
+// Define an event listener for handling incoming SSE messages
+eventSource.addEventListener('online', function(e) {
+    console.log("ONLINE event listener");
+    const data = JSON.parse(e.data);
+    const eventData = data.info;
 
     if(eventData === "checkRound"){
         console.log("Check Round SSE");
@@ -221,21 +223,12 @@ eventSource.addEventListener('message', (event) => {
         console.log("Check Num Member Change SSE");
         checkNumMemberChange();
     }
-    //sseDataElement.textContent = eventData.data;
-});
-*/
-
-
-// Define an event listener for handling incoming SSE messages
-eventSource.addEventListener('message', function(e) {
-    console.log("SSE event listener");
-    const responeEventData = JSON.parse(e.data);
-    const eventData = responeEventData.data;
+    else{
+        console.log("command " + eventData + " not recognized");
+    }
 
     console.log("Received SSE: " + eventData);
-});
-
-
+}, true);
 
 
 // Handle connection error
@@ -250,9 +243,10 @@ eventSource.addEventListener('open', (event) => {
 });
 
 
-
+/*
 if(gameStage === "round0"){
     // Check for number changes every 500 milliseconds
     setInterval(checkNumMemberChange, 500);
     setInterval(checkRound, 500);
 }
+*/
