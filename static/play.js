@@ -66,6 +66,7 @@ function SetUserWord(url, postData){
         }
     }
     xhr.send(postData);
+    getUserWords();
 }
 
 
@@ -95,12 +96,62 @@ function getUserTheory() {
     xhr.send();
 }
 
-//if(gameStage === "round2"){
-//    setInterval(getUserTheory, 3000);
-//}
+
+function getUserWords() {
+    console.log("Get user words workin now");
+    var firstname = document.getElementById('playerName').textContent;
+
+    var wordButton1 = document.getElementById('wordButton1');
+    var wordButton2 = document.getElementById('wordButton2');
+    var wordButton3 = document.getElementById('wordButton3');
+
+    var xhr = new XMLHttpRequest();
+    var url = '/member-words-return/' + roomCode + '/' + firstname;
+
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+                var response = JSON.parse(xhr.responseText);
+                var word1 = response.word1;
+                var word2 = response.word2;
+                var word3 = response.word3;
+                console.log("Word 1: " + word1);
+                console.log("Word 2: " + word2);
+                console.log("Word 3: " + word3);
+
+                if(word1 === "NO_ENTRY"){
+                    wordButton1.style.display = "none";
+                }
+                else{
+                    wordButton1.style.display = "block";
+                    wordButton1.innerText = word1;
+                }
+                if(word2 === "NO_ENTRY"){
+                    wordButton2.style.display = "none";
+                }
+                else{
+                    wordButton2.style.display = "block";
+                    wordButton2.innerText = word2;
+                }
+                if(word3 === "NO_ENTRY"){
+                    wordButton3.style.display = "none";
+                }
+                else{
+                    wordButton3.style.display = "block";
+                    wordButton3.innerText = word3;
+                }
+
+
+            }
+        }
+    };
+    xhr.send();
+}
+
 
 function checkRound() {
-
+    console.log("Check Round Called");
     var firstname = document.getElementById('playerName').textContent;
     if(gameStage === "round1"){
         var enterTheoryTextElement = document.getElementById('enterTheoryText');
@@ -151,6 +202,7 @@ function checkRound() {
                 }
 
                 gameStage = response.gameStage;
+                console.log("New round: " + gameStage);
 
                 if(gameStage === "round0"){
                     document.getElementById("round0").style.display = "block";
@@ -196,18 +248,16 @@ function checkRound() {
 
 checkRound();
 
+
+
 // Create an EventSource instance to connect to your SSE server
 const eventSource = new EventSource('/ssejavascript/' + roomCode);
 console.log("Event source: /ssejavascript/" + roomCode);
 
 // Define an event listener for handling incoming SSE messages
-eventSource.addEventListener('message', function(e) {
-    console.log(e.data);
-}, false);
-
-// Define an event listener for handling incoming SSE messages
 eventSource.addEventListener('online', function(e) {
     console.log("ONLINE event listener");
+
     const data = JSON.parse(e.data);
     const eventData = data.info;
 
@@ -219,9 +269,16 @@ eventSource.addEventListener('online', function(e) {
         console.log("Get User Theory SSE");
         getUserTheory();
     }
+    else if(eventData === "getUserWords"){
+        console.log("Get User Words SSE");
+        getUserWords();
+    }
     else if(eventData === "checkNumMemberChange"){
         console.log("Check Num Member Change SSE");
         checkNumMemberChange();
+    }
+    else if(eventData === "Connection Established"){
+        console.log("Connection Established");
     }
     else{
         console.log("command " + eventData + " not recognized");
@@ -230,23 +287,14 @@ eventSource.addEventListener('online', function(e) {
     console.log("Received SSE: " + eventData);
 }, true);
 
-
 // Handle connection error
 eventSource.addEventListener('error', (error) => {
     console.error('SSE Connection Error:', error);
+    checkRound();
     eventSource.close();
 });
-
 
 eventSource.addEventListener('open', (event) => {
     console.log('SSE Connection opened');
 });
 
-
-/*
-if(gameStage === "round0"){
-    // Check for number changes every 500 milliseconds
-    setInterval(checkNumMemberChange, 500);
-    setInterval(checkRound, 500);
-}
-*/

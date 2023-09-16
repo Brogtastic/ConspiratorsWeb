@@ -75,10 +75,12 @@
 
     {% if member.waiting == False %}
     <h4>Welcome to Round 3, LOSER!</h4>
+    <form method="POST" id="wordButtonForm" class="col-md-4 mb-3">
+        <button type="submit" class="btn btn-primary" id="wordButton1" name="wordButton1" value="clicked" style="display: none;">Word 1</button>
+        <button type="submit" class="btn btn-primary" id="wordButton2" name="wordButton2" value="clicked" style="display: none;">Word 2</button>
+        <button type="submit" class="btn btn-primary" id="wordButton3" name="wordButton3" value="clicked" style="display: none;">Word 3</button>
+    </form>
     <h4>Here are your words.</h4>
-    {% for word in words_list %}
-    <div>{{ word.content }}</div>
-    {% endfor %}
     {% else %}
     <h1> Waiting for other players to submit</h1>
     {% endif %}

@@ -96,13 +96,20 @@ def event_stream(enteredRoomCode):
 
 @views.route('/ssejavascript/<enteredRoomCode>')
 def ssejavascript(enteredRoomCode):
-    print("JavaScript Connected!")
+    print("\nJavaScript Connected!")
+    data_to_send_js.append([enteredRoomCode, "Connection Established"])
     room = Room.query.filter_by(code=enteredRoomCode).first()
     if (not room) or (enteredRoomCode not in openThreads):
         print("data withold")
-        return Response(json.dumps({'data': "withold"}) + "\n\n", content_type='text/event-stream')
+        return Response(json.dumps({'data': "withold"}) + "\n\n", content_type='text/event-stream', headers={
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+    })
 
-    return Response(event_stream_javascript(enteredRoomCode), content_type='text/event-stream')
+    return Response(event_stream_javascript(enteredRoomCode), content_type='text/event-stream', headers={
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+    })
 
 def event_stream_javascript(enteredRoomCode):
     global data_to_send_js
@@ -114,7 +121,7 @@ def event_stream_javascript(enteredRoomCode):
             data = {'info': data_to_send_js[0][1]}
             data_to_send_js.pop(0)
             yield f"id: 1\ndata: {json.dumps(data)}\nevent: online\n\n"
-        time.sleep(1)
+        time.sleep(0.05)
 
 
 @views.route("/", methods=['GET', 'POST'])
@@ -215,6 +222,7 @@ def numMembersReturn(roomCode):
 def gameStageReturn(roomCode):
     room = Room.query.filter_by(code=roomCode).first()
     if room:
+        print("JavaScript gamestage: " + room.gameStage)
         return jsonify({'gameStage': room.gameStage})
     else:
         return jsonify({'gameStage': "disconnected"})
@@ -255,6 +263,32 @@ def memberTheoryReturn(roomCode, memberName):
         return jsonify({'receivedName': member.writing_to, 'receivedTheory': member.received_theory})
     else:
         return jsonify({'receivedName': 'no member exists', 'receivedTheory': 'no member exists'})
+
+
+@views.route("/member-words-return/<roomCode>/<memberName>")
+def memberWordsReturn(roomCode, memberName):
+    room = Room.query.filter_by(code=roomCode).first()
+
+    if not room:
+        return jsonify({'word1': 'no room exists', 'word2': 'no room exists', 'word3': 'no room exists'})
+
+    member = next((m for m in room.members if m.name == memberName), None)
+
+    if (member):
+        words = []
+        for word in member.words:
+            words.append(word.content)
+
+        if member.words_num == 3:
+            return jsonify({'word1': words[0], 'word2': words[1], 'word3': words[2]})
+        elif member.words_num == 2:
+            return jsonify({'word1': words[0], 'word2': words[1], 'word3': 'NO_ENTRY'})
+        elif member.words_num == 1:
+            return jsonify({'word1': words[0], 'word2': 'NO_ENTRY', 'word3': 'NO_ENTRY'})
+        else:
+            return jsonify({'word1': 'NO_ENTRY', 'word2': 'NO_ENTRY', 'word3': 'NO_ENTRY'})
+    else:
+        return jsonify({'word1': 'NO_MEMBER', 'word2': 'NO_MEMBER', 'word3': 'NO_MEMBER'})
 
 @views.route("/members-names-return/<roomCode>")
 def membersNamesReturn(roomCode):
@@ -323,6 +357,7 @@ def setUserWord():
                 db.session.commit()
                 print("unfinished word added")
             print("Autocomplete word")
+        data_to_send_js.append([room.code, "getUserWords"])
         return jsonify({'status': "success"})
 
     return jsonify({'status': "failed"})
@@ -349,6 +384,8 @@ def setRound():
         db.session.commit()
         print("New round status: " + room.gameStage)
         data_to_send_js.append([room.code, "checkRound"])
+        if(roundSet == "round3"):
+            data_to_send_js.append([room.code, "getUserWords"])
         return jsonify({'status': "success"})
 
     return jsonify({'status': "failed"})
@@ -441,6 +478,9 @@ def play(roomCodeEnter):
     if(not room):
         return redirect(url_for('views.home'))
 
+    if(room.gameStage == "round3"):
+        data_to_send_js.append([room.code, "getUserWords"])
+
     if (current_user == room.members[0]):
         startingPlayer = True
     else:
@@ -488,6 +528,7 @@ def play(roomCodeEnter):
                 data_to_send.append([room.code, "UpdateGameStage"])
                 data_to_send_js.append([room.code, "checkRound"])
             data_to_send_js.append([room.code, "getUserTheory"])
+            return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
         elif (enterWordButton == 'clicked') and (current_user.words_num < 3):
             word = request.form.get('enterWordText')
             new_word = Words(content=word, member_id=current_user.id)
@@ -504,7 +545,7 @@ def play(roomCodeEnter):
 
             if(current_user.words_num == 3):
                 current_user.waiting = True
-            db.session.commit()
+                db.session.commit()
 
             # Check to see if everyone is waiting
             allwaiting = True
@@ -518,9 +559,7 @@ def play(roomCodeEnter):
                 room.gameStage = "round3"
                 db.session.commit()
                 data_to_send.append([room.code, "UpdateGameStage"])
-                data_to_send_js.append([room.code, "checkRound"])
-                data_to_send_js.append([room.code, "getUserWords"])
-            words_list = list(current_user.words)
+            return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
 
-    return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user, words_list=words_list)
+    return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
 
