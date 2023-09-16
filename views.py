@@ -79,6 +79,8 @@ def sse(enteredRoomCode):
     if (not room) or (enteredRoomCode not in openThreads):
         print("data withold")
         return Response(json.dumps({'data': "withold"}) + "\n\n", content_type='text/event-stream')
+    else:
+        data_to_send.append([room.code, "SSE Connected"])
 
     return Response(event_stream(enteredRoomCode), content_type='text/event-stream')
 
@@ -91,7 +93,7 @@ def event_stream(enteredRoomCode):
             data = {'data': data_to_send[0][1]}
             data_to_send.pop(0)
             yield json.dumps(data) + "\n\n"
-        time.sleep(1)
+        time.sleep(0.05)
 
 
 @views.route('/ssejavascript/<enteredRoomCode>')
