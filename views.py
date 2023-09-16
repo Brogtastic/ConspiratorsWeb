@@ -6,6 +6,7 @@ import random
 import json
 import threading
 import asyncio
+import time
 
 sse_thread_flag = threading.Event()
 
@@ -16,6 +17,7 @@ allRoomCodes = {"1234567"}
 secret_key = "agekvoslfhfgaye6382m4i201nui32h078hrauipbvluag78e4tg4w3liutbh2q89897wrgh4ui3gh2780gbrwauy"
 openThreads = []
 data_to_send = []
+data_to_send_js = []
 endMyLife = False
 
 def NoRepeatTheories(theory, room):
@@ -89,8 +91,31 @@ def event_stream(enteredRoomCode):
             data = {'data': data_to_send[0][1]}
             data_to_send.pop(0)
             yield json.dumps(data) + "\n\n"
-        asyncio.sleep(1)
+        time.sleep(1)
 
+
+@views.route('/ssejavascript/<enteredRoomCode>')
+def ssejavascript(enteredRoomCode):
+    print("JavaScript Connected!")
+    room = Room.query.filter_by(code=enteredRoomCode).first()
+    if (not room) or (enteredRoomCode not in openThreads):
+        print("data withold")
+        return Response(json.dumps({'data': "withold"}) + "\n\n", content_type='text/event-stream')
+
+    return Response(event_stream_javascript(enteredRoomCode), content_type='text/event-stream')
+
+def event_stream_javascript(enteredRoomCode):
+    global data_to_send_js
+    global openThreads
+    while enteredRoomCode in openThreads:
+        if len(data_to_send_js) > 0 and data_to_send_js[0][0] == enteredRoomCode:
+            print("data send js")
+            print("Data JS SSE: " + data_to_send_js[0][1])
+            data = {'data': data_to_send_js[0][1]}
+            data_to_send_js.pop(0)
+            yield json.dumps(data) + "\n\n"
+        time.sleep(1)
+        data_to_send_js.append([enteredRoomCode, "Data Send JS"])
 
 
 @views.route("/", methods=['GET', 'POST'])
@@ -141,6 +166,7 @@ def home():
             login_user(new_member, remember=True)
 
             data_to_send.append([room.code, "UpdateMembers"])
+            data_to_send_js.append([room.code, "checkNumMemberChange"])
             print("data_to_send: " + str(data_to_send))
 
             return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
@@ -153,6 +179,7 @@ def home():
                     member_to_update.name = playerName
                     member_to_update.room_id = room.id
                     db.session.commit()
+                data_to_send_js.append([room.code, "checkNumMemberChange"])
                 data_to_send.append([room.code, "UpdateMembers"])
                 return redirect(url_for('views.play', roomCodeEnter=enteredRoomCode))
             else:
@@ -264,6 +291,7 @@ def setUserTheory():
             if theory:
                 member.theory = theory
             db.session.commit()
+            data_to_send_js.append([room.code, "getUserTheory"])
             print("Autocomplete theory")
         return jsonify({'status': "success"})
 
@@ -321,6 +349,7 @@ def setRound():
             member.waiting = False
         db.session.commit()
         print("New round status: " + room.gameStage)
+        data_to_send_js.append([room.code, "checkRound"])
         return jsonify({'status': "success"})
 
     return jsonify({'status': "failed"})
@@ -349,7 +378,11 @@ def deleteroom():
 
         print(allRoomCodes)
 
-        openThreads.pop(0)
+        for i in range(len(openThreads)):
+            if openThreads[i] == deleteCode:
+                openThreads.pop(i)
+                break
+
         print("Open threads after deletion: " + str(openThreads))
 
         return jsonify({'status': 'Code Deleted and Room Removed'})
@@ -423,6 +456,7 @@ def play(roomCodeEnter):
             current_user.waiting = False
             db.session.commit()
             data_to_send.append([room.code, "UpdateGameStage"])
+            data_to_send_js.append([room.code, "checkRound"])
             return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
         elif enterTheoryButton == 'clicked':
             theory = request.form.get('enterTheoryText')
@@ -451,6 +485,8 @@ def play(roomCodeEnter):
                 room.gameStage = "round2"
                 db.session.commit()
                 data_to_send.append([room.code, "UpdateGameStage"])
+                data_to_send_js.append([room.code, "checkRound"])
+            data_to_send_js.append([room.code, "getUserTheory"])
         elif (enterWordButton == 'clicked') and (current_user.words_num < 3):
             word = request.form.get('enterWordText')
             new_word = Words(content=word, member_id=current_user.id)
@@ -481,6 +517,7 @@ def play(roomCodeEnter):
                 room.gameStage = "round3"
                 db.session.commit()
                 data_to_send.append([room.code, "UpdateGameStage"])
+                data_to_send_js.append([room.code, "checkRound"])
             words_list = list(current_user.words)
 
     return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user, words_list=words_list)

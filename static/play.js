@@ -1,10 +1,10 @@
 const currentPath = window.location.pathname;
 var gameStage = "round0";
 
+var roomCodeElement = document.getElementById('playRoomCode');
+var roomCode = roomCodeElement.textContent;
 
 function checkNumMemberChange() {
-    var roomCodeElement = document.getElementById('playRoomCode');
-    var roomCode = roomCodeElement.textContent;
 
     var xhr = new XMLHttpRequest();
 
@@ -13,23 +13,18 @@ function checkNumMemberChange() {
         if (xhr.readyState === XMLHttpRequest.DONE) {
             if (xhr.status === 200) {
                 var response = JSON.parse(xhr.responseText);
-                var numMembers = response.numMembers;
+                var numMembers = response.numMembers; // Corrected
                 document.getElementById('numMembers').innerText = "Number of players in room: " + numMembers;
-                if(numMembers > 2){
+
+                if (Number(numMembers) > 2) {
                     document.getElementById("StartGame").style.display = "block";
-                }
-                else{
+                } else {
                     document.getElementById("StartGame").style.display = "none";
                 }
             }
         }
     };
     xhr.send();
-}
-
-if(gameStage === "round0"){
-    // Check for number changes every 500 milliseconds
-    setInterval(checkNumMemberChange, 500);
 }
 
 function SetUserTheory(url, postData){
@@ -71,7 +66,6 @@ function SetUserWord(url, postData){
 
 
 function getUserTheory() {
-    var roomCode = document.getElementById('playRoomCode').textContent;
     var firstname = document.getElementById('playerName').textContent;
 
     var xhr = new XMLHttpRequest();
@@ -102,8 +96,7 @@ function getUserTheory() {
 //}
 
 function checkRound() {
-    var roomCodeElement = document.getElementById('playRoomCode');
-    var roomCode = roomCodeElement.textContent;
+
     var firstname = document.getElementById('playerName').textContent;
     if(gameStage === "round1"){
         var enterTheoryTextElement = document.getElementById('enterTheoryText');
@@ -197,5 +190,69 @@ function checkRound() {
     xhr.send();
 }
 
-checkRound();
-setInterval(checkRound, 150);
+//checkRound();
+//setInterval(checkRound, 150);
+
+
+//const sseDataElement = document.getElementById('ssedata');
+
+// Create an EventSource instance to connect to your SSE server
+const eventSource = new EventSource('/ssejavascript/' + roomCode);
+console.log("Event source: /ssejavascript/" + roomCode);
+
+/*
+// Define an event listener for handling incoming SSE messages
+eventSource.addEventListener('message', (event) => {
+    console.log("SSE event listener");
+    const responeEventData = JSON.parse(event.data);
+    const eventData = responeEventData.data;
+
+    console.log("Received SSE: " + eventData);
+
+    if(eventData === "checkRound"){
+        console.log("Check Round SSE");
+        checkRound();
+    }
+    else if(eventData === "getUserTheory"){
+        console.log("Get User Theory SSE");
+        getUserTheory();
+    }
+    else if(eventData === "checkNumMemberChange"){
+        console.log("Check Num Member Change SSE");
+        checkNumMemberChange();
+    }
+    //sseDataElement.textContent = eventData.data;
+});
+*/
+
+
+// Define an event listener for handling incoming SSE messages
+eventSource.addEventListener('message', function(e) {
+    console.log("SSE event listener");
+    const responeEventData = JSON.parse(e.data);
+    const eventData = responeEventData.data;
+
+    console.log("Received SSE: " + eventData);
+});
+
+
+
+
+// Handle connection error
+eventSource.addEventListener('error', (error) => {
+    console.error('SSE Connection Error:', error);
+    eventSource.close();
+});
+
+
+eventSource.addEventListener('open', (event) => {
+    console.log('SSE Connection opened');
+});
+
+
+
+if(gameStage === "round0"){
+    // Check for number changes every 500 milliseconds
+    setInterval(checkNumMemberChange, 500);
+    setInterval(checkRound, 500);
+}
