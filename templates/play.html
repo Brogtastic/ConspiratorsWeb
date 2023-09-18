@@ -26,11 +26,11 @@
 </head>
 <body>
 
-<small id="gameStage" name="gameStage" style="display: none;">{{ room.gameStage }}</small>
-<h1 id="playRoomCode" name="playRoomCode">{{ roomCodeEnter }}</h1>
-<h1 id="playerName" name="playerName">{{ playerName }}</h1>
+<small id="gameStage" style="display: none;">{{ room.gameStage }}</small>
+<h1 id="playRoomCode">{{ roomCodeEnter }}</h1>
+<h1 id="playerName">{{ playerName }}</h1>
 
-<div id="round0" name="round0" style="display: none;">
+<div id="round0" style="display: none;">
     {% if startingPlayer == True %}
     You are Starting Player
     <form method="POST" id="startGameForm" class="col-md-4 mb-3">
@@ -41,7 +41,7 @@
     <small> wating... </small>
 </div>
 
-<div id="round1" name="round1" style="display: none;">
+<div id="round1" style="display: none;">
     <h1>Round 1</h1>
     {% if member.waiting == False %}
     <h2>{{ room.question }}</h2>
@@ -54,7 +54,7 @@
     {% endif %}
 </div>
 
-<div id="round2" name="round2" style="display: none;">
+<div id="round2" style="display: none;">
     <h1>Round 2</h1>
     <h2 id="round2Prompt"> Write some words that {{member.writing_to}} has to work into their theory! </h2>
     <h2 id="round2PlayerTheory"> {{member.writing_to}}'s theory: </h2>
@@ -70,26 +70,35 @@
     <h3>{{ member.words_num }} / 3</h3>
 </div>
 
-<div id="round3" name="round3" style="display: none;">
+<div id="round3" style="display: none;">
     <h1>Round 3</h1>
 
-    {% if member.waiting == False %}
-    <h4>Welcome to Round 3, LOSER!</h4>
-    <form method="POST" id="wordButtonForm" class="col-md-4 mb-3">
-        <button type="submit" class="btn btn-primary" id="wordButton1" name="wordButton1" value="clicked" style="display: none;">Word 1</button>
-        <button type="submit" class="btn btn-primary" id="wordButton2" name="wordButton2" value="clicked" style="display: none;">Word 2</button>
-        <button type="submit" class="btn btn-primary" id="wordButton3" name="wordButton3" value="clicked" style="display: none;">Word 3</button>
-    </form>
-    <h4>Here are your words.</h4>
-    {% else %}
-    <h1> Waiting for other players to submit</h1>
-    {% endif %}
+    <div id="watchingPresentation" style="display: none;">
+        <h4>You are watching a presentation</h4>
+    </div>
+
+    <div id="presentingTheory" style="display: none;">
+        <h4>You are presenting your theory</h4>
+        <h4>(The soundboard will go here)</h4>
+        <form method="POST" id="presentingButtonForm" class="col-md-4 mb-3">
+            <button type="submit" class="btn btn-primary" id="endPresentationButton" name="endPresentationButton" value="clicked">End Presentation</button>
+        </form>
+    </div>
+
+    <div id="presentingWords" style="display: none;">
+        <h4>Here are your words.</h4>
+        <form method="POST" id="wordButtonForm" class="col-md-4 mb-3">
+            <button type="submit" class="btn btn-primary" id="wordButton1" name="wordButton1" value="clicked" style="display: none;">Word 1</button>
+            <button type="submit" class="btn btn-primary" id="wordButton2" name="wordButton2" value="clicked" style="display: none;">Word 2</button>
+            <button type="submit" class="btn btn-primary" id="wordButton3" name="wordButton3" value="clicked" style="display: none;">Word 3</button>
+        </form>
+    </div>
 
 </div>
 
-<div id="disconnected" name="disconnected" style="display: none;">
+<div id="disconnected" style="display: none;">
     <h1>Room disconnected</h1>
-    <h3 href="/">Refresh to return to homepage</h3>
+    <h3>Refresh to <a href="/">return to homepage</a></h3>
 </div>
 
 <script

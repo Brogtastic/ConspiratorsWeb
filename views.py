@@ -12,7 +12,6 @@ sse_thread_flag = threading.Event()
 
 views = Blueprint(__name__, "views")
 
-name = "no name"
 allRoomCodes = {"1234567"}
 secret_key = "agekvoslfhfgaye6382m4i201nui32h078hrauipbvluag78e4tg4w3liutbh2q89897wrgh4ui3gh2780gbrwauy"
 openThreads = []
@@ -59,12 +58,15 @@ def ShuffleTheories(roomCode):
     for member in room.members:
         # Assign the theory that the player will write words to
         member.received_theory = shuffledTheoryList[i]
+        member.words_presenting = i
 
         # Find the name of the player to display their name and for assigning points later
         written_member = Member.query.filter_by(theory=shuffledTheoryList[i]).first()
+        written_member.presenting = i
         member.writing_to = written_member.name
         db.session.commit()
-        print(member.name + " is writing to " + member.writing_to)
+        print(member.name + " is writing to " + member.writing_to + " and their presenting numbers are " + str(member.words_presenting) + " and " + str(written_member.presenting))
+
         i += 1
 
     print("Shuffled Theory List:")
@@ -93,7 +95,7 @@ def event_stream(enteredRoomCode):
             data = {'data': data_to_send[0][1]}
             data_to_send.pop(0)
             yield json.dumps(data) + "\n\n"
-        time.sleep(0.05)
+        time.sleep(0.01)
 
 
 @views.route('/ssejavascript/<enteredRoomCode>')
@@ -123,7 +125,7 @@ def event_stream_javascript(enteredRoomCode):
             data = {'info': data_to_send_js[0][1]}
             data_to_send_js.pop(0)
             yield f"id: 1\ndata: {json.dumps(data)}\nevent: online\n\n"
-        time.sleep(0.05)
+        time.sleep(0.01)
 
 
 @views.route("/", methods=['GET', 'POST'])
@@ -469,13 +471,11 @@ def newroom():
 @views.route("/play/<roomCodeEnter>", methods=['GET', 'POST'])
 @login_required
 def play(roomCodeEnter):
-    global name
     global secret_key
 
     room = Room.query.filter_by(code=roomCodeEnter).first()
 
     numMembers = len(room.members)
-    words_list = []
 
     if(not room):
         return redirect(url_for('views.home'))
@@ -492,6 +492,7 @@ def play(roomCodeEnter):
         startGame = request.form.get('StartGame')
         enterTheoryButton = request.form.get('enterTheoryButton')
         enterWordButton = request.form.get('enterWordButton')
+        endPresentationButton = request.form.get('endPresentationButton')
         if startGame == 'clicked':
             room.gameStage = "round1"
             db.session.commit()
@@ -530,7 +531,6 @@ def play(roomCodeEnter):
                 data_to_send.append([room.code, "UpdateGameStage"])
                 data_to_send_js.append([room.code, "checkRound"])
             data_to_send_js.append([room.code, "getUserTheory"])
-            return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
         elif (enterWordButton == 'clicked') and (current_user.words_num < 3):
             word = request.form.get('enterWordText')
             new_word = Words(content=word, member_id=current_user.id)
@@ -561,7 +561,9 @@ def play(roomCodeEnter):
                 room.gameStage = "round3"
                 db.session.commit()
                 data_to_send.append([room.code, "UpdateGameStage"])
-            return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
+        elif (endPresentationButton == 'clicked'):
+            room.presentingNum += 1
+            db.session.commit()
 
     return render_template("play.html", roomCodeEnter=roomCodeEnter, playerName=current_user.name, startingPlayer=startingPlayer, numMembers=numMembers, gameStage=room.gameStage, room=room, member=current_user)
 

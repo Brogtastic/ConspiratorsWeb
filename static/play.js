@@ -290,7 +290,13 @@ eventSource.addEventListener('online', function(e) {
 // Handle connection error
 eventSource.addEventListener('error', (error) => {
     console.error('SSE Connection Error:', error);
-    checkRound();
+
+    document.getElementById("round0").style.display = "none";
+    document.getElementById("round1").style.display = "none";
+    document.getElementById("round2").style.display = "none";
+    document.getElementById("round3").style.display = "none";
+    document.getElementById("disconnected").style.display = "block";
+
     eventSource.close();
 });
 

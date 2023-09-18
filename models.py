@@ -8,6 +8,7 @@ class Room(db.Model):
     question = db.Column(db.String(150))
     members = db.relationship('Member', backref='room')
     thread = db.Column(db.Boolean)
+    presentingNum = db.Column(db.Integer)
     data_to_send = db.Column(db.Boolean)
 
 class Member(db.Model, UserMixin):
@@ -18,8 +19,8 @@ class Member(db.Model, UserMixin):
     theory = db.Column(db.String(150))
     received_theory = db.Column(db.String(150))
     waiting = db.Column(db.Boolean)
-    presenting = db.Column(db.Boolean)
-    words_presenting = db.Column(db.Boolean)
+    presenting = db.Column(db.Integer)
+    words_presenting = db.Column(db.Integer)
     words = db.relationship('Words')
     words_num = db.Column(db.Integer)
     writing_to = db.Column(db.String(15))
