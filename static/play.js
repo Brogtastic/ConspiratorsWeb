@@ -4,6 +4,10 @@ var gameStage = "round0";
 var roomCodeElement = document.getElementById('playRoomCode');
 var roomCode = roomCodeElement.textContent;
 
+var wordButton1 = document.getElementById('wordButton1');
+var wordButton2 = document.getElementById('wordButton2');
+var wordButton3 = document.getElementById('wordButton3');
+
 function checkNumMemberChange() {
     console.log("Sending from CheckNumMemberChange (Called successfully)");
     var xhr = new XMLHttpRequest();
@@ -100,10 +104,6 @@ function getUserTheory() {
 function getUserWords() {
     console.log("Get user words workin now");
     var firstname = document.getElementById('playerName').textContent;
-
-    var wordButton1 = document.getElementById('wordButton1');
-    var wordButton2 = document.getElementById('wordButton2');
-    var wordButton3 = document.getElementById('wordButton3');
 
     var xhr = new XMLHttpRequest();
     var url = '/member-words-return/' + roomCode + '/' + firstname;
@@ -232,6 +232,7 @@ function checkRound() {
                     document.getElementById("round2").style.display = "none";
                     document.getElementById("round3").style.display = "block";
                     document.getElementById("disconnected").style.display = "none";
+                    getUserWords();
                 }
                 else{
                     document.getElementById("round0").style.display = "none";
@@ -246,8 +247,64 @@ function checkRound() {
     xhr.send();
 }
 
+function displayWord(url, postData){
+    var xhr = new XMLHttpRequest();
+    console.log("displayWord function called with URL: " + url);
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); // Set appropriate content type
+    xhr.onreadystatechange = function () {
+        console.log("On Ready State Change check");
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            console.log("XML HTTP Request Done");
+            if (xhr.status === 200) {
+                console.log("status === 200");
+                var response = JSON.parse(xhr.responseText);
+                console.log("Word display " + response.status);
+            }
+        }
+    }
+    xhr.send(postData);
+}
+
+
 checkRound();
 
+
+wordButton1.onclick = function(){
+    console.log("WordButton1 clicked!");
+    var word = wordButton1.innerText;
+
+    var this_url = '/display-word?word=' + word + '&roomCode=' + roomCode;
+    var postData = 'word=' + encodeURIComponent(word) +
+   '&roomCode=' + encodeURIComponent(roomCode);
+
+    displayWord(this_url, postData);
+    wordButton1.disabled = true;
+};
+
+wordButton2.onclick = function(){
+    console.log("WordButton2 clicked!");
+    var word = wordButton2.innerText;
+
+    var this_url = '/display-word?word=' + word + '&roomCode=' + roomCode;
+    var postData = 'word=' + encodeURIComponent(word) +
+   '&roomCode=' + encodeURIComponent(roomCode);
+
+    displayWord(this_url, postData);
+    wordButton2.disabled = true;
+};
+
+wordButton3.onclick = function(){
+    console.log("WordButton3 clicked!");
+    var word = wordButton3.innerText;
+
+    var this_url = '/display-word?word=' + word + '&roomCode=' + roomCode;
+    var postData = 'word=' + encodeURIComponent(word) +
+   '&roomCode=' + encodeURIComponent(roomCode);
+
+    displayWord(this_url, postData);
+    wordButton3.disabled = true;
+};
 
 
 // Create an EventSource instance to connect to your SSE server

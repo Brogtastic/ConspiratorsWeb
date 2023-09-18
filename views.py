@@ -95,7 +95,7 @@ def event_stream(enteredRoomCode):
             data = {'data': data_to_send[0][1]}
             data_to_send.pop(0)
             yield json.dumps(data) + "\n\n"
-        time.sleep(0.01)
+        time.sleep(0.05)
 
 
 @views.route('/ssejavascript/<enteredRoomCode>')
@@ -120,12 +120,16 @@ def event_stream_javascript(enteredRoomCode):
     global openThreads
     while enteredRoomCode in openThreads:
         if len(data_to_send_js) > 0 and data_to_send_js[0][0] == enteredRoomCode:
-            print("data send js")
-            print("Data JS SSE: " + data_to_send_js[0][1])
-            data = {'info': data_to_send_js[0][1]}
-            data_to_send_js.pop(0)
-            yield f"id: 1\ndata: {json.dumps(data)}\nevent: online\n\n"
-        time.sleep(0.01)
+            if(data_to_send_js[0][1]):
+                print("data send js")
+                print("Data JS SSE: " + data_to_send_js[0][1])
+                data = {'info': data_to_send_js[0][1]}
+                data_to_send_js.pop(0)
+                yield f"id: 1\ndata: {json.dumps(data)}\nevent: online\n\n"
+            elif(data_to_send_js[0][0]):
+                print("Data JS list out of range")
+                data_to_send_js.pop(0)
+        time.sleep(0.05)
 
 
 @views.route("/", methods=['GET', 'POST'])
@@ -362,6 +366,24 @@ def setUserWord():
                 print("unfinished word added")
             print("Autocomplete word")
         data_to_send_js.append([room.code, "getUserWords"])
+        return jsonify({'status': "success"})
+
+    return jsonify({'status': "failed"})
+
+@views.route("/display-word", methods=['GET', 'POST'])
+def displayWord():
+    print("Display Word called")
+    args = request.args
+    word = args.get('word', 'nothing')
+    roomCode = args.get('roomCode', 'nothing')
+
+    room = Room.query.filter_by(code=roomCode).first()
+
+    if len(word) < 1:
+        return jsonify({'status': "failed"})
+
+    if room:
+        data_to_send.append([room.code, "WORD_DISPLAY:" + word])
         return jsonify({'status': "success"})
 
     return jsonify({'status': "failed"})
